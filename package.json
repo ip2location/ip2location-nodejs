@@ -1,0 +1,22 @@
+{
+  "name": "IP2Location",
+	"version": "6.0.0",
+	"description": "IP2Location geolocation component",
+	"keywords": ["ip2location", "geolocation"],
+	"homepage": "http://www.ip2location.com/developers/nodejs",
+	"author": {
+		"name": "IP2Location.com",
+		"email": "sales@ip2location.com",
+		"url": "http://www.ip2location.com/"
+	},
+	"files": ["src/IP2Location.js"],
+	"main": "src/IP2Location.js",
+	"license" : "LGPL",
+	"dependencies" : {
+		"bignum" : ">=0.6.1"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/ip2location-nodejs/IP2Location.git"
+	}
+}
