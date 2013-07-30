@@ -1,5 +1,5 @@
 {
-	"name": "ip2location",
+	"name": "ip2location-nodejs",
 	"version": "6.0.0",
 	"description": "IP2Location geolocation component",
 	"keywords": ["ip2location", "geolocation"],
