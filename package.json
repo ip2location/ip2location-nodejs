@@ -9,7 +9,7 @@
 		"email": "sales@ip2location.com",
 		"url": "http://www.ip2location.com/"
 	},
-	"files": ["src/ip2location.js"],
+	"files": ["src/ip2location.js","src/test.js","./README.md"],
 	"main": "src/ip2location.js",
 	"license" : "LGPL",
 	"dependencies" : {
