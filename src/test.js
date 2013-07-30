@@ -1,4 +1,4 @@
-var ip2loc = require("IP2Location");
+var ip2loc = require("ip2location");
 
 // for both IPv4 and IPv6
 ip2loc.IP2Location_init("/root/testnodejs/db24.BIN", "/root/testnodejs/IPV6-COUNTRY.BIN");
