@@ -23,7 +23,7 @@ Installation
 
 To install this module type the following:
 
-   npm install ip2location
+   npm install ip2location-nodejs
 
 Dependencies
 ============
