@@ -2,10 +2,10 @@ var net = require("net");
 var fs = require("fs");
 var bignum = require("bignum");
 
-var version = "6.0";
-var fileIPv4 = "";
-var fileIPv6 = "";
-
+var version = "7.0";
+var binfile = "";
+var IPv4ColumnSize = 0;
+var IPv6ColumnSize = 0;
 var low = 0;
 var high = 0;
 var mid = 0;
@@ -30,31 +30,64 @@ var mobilebrand_pos = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
 var elevation_pos = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 11, 19, 0, 19];
 var usagetype_pos = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 12, 20];
 
-var mydb_IPv4 = {
-  "_DBType": 0,
-	"_DBColumn": 0,
-	"_DBYear": 0,
-	"_DBMonth": 0,
-	"_DBDay": 0,
-	"_DBCount": 0,
-	"_BaseAddr": 0
-};
+var country_pos_offset = 0;
+var region_pos_offset = 0;
+var city_pos_offset = 0;
+var isp_pos_offset = 0;
+var domain_pos_offset = 0;
+var zipcode_pos_offset = 0;
+var latitude_pos_offset = 0;
+var longitude_pos_offset = 0;
+var timezone_pos_offset = 0;
+var netspeed_pos_offset = 0;
+var iddcode_pos_offset = 0;
+var areacode_pos_offset = 0;
+var weatherstationcode_pos_offset = 0;
+var weatherstationname_pos_offset = 0;
+var mcc_pos_offset = 0;
+var mnc_pos_offset = 0;
+var mobilebrand_pos_offset = 0;
+var elevation_pos_offset = 0;
+var usagetype_pos_offset = 0;
 
-var mydb_IPv6 = {
+var country_enabled = 0;
+var region_enabled = 0;
+var city_enabled = 0;
+var isp_enabled = 0;
+var domain_enabled = 0;
+var zipcode_enabled = 0;
+var latitude_enabled = 0;
+var longitude_enabled = 0;
+var timezone_enabled = 0;
+var netspeed_enabled = 0;
+var iddcode_enabled = 0;
+var areacode_enabled = 0;
+var weatherstationcode_enabled = 0;
+var weatherstationname_enabled = 0;
+var mcc_enabled = 0;
+var mnc_enabled = 0;
+var mobilebrand_enabled = 0;
+var elevation_enabled = 0;
+var usagetype_enabled = 0;
+
+var mydb = {
 	"_DBType": 0,
 	"_DBColumn": 0,
 	"_DBYear": 0,
 	"_DBMonth": 0,
 	"_DBDay": 0,
 	"_DBCount": 0,
-	"_BaseAddr": 0
+	"_BaseAddr": 0,
+	"_DBCountIPv6": 0,
+	"_BaseAddrIPv6": 0,
+	"_OldBIN": 0
 };
 
 // Read binary data
-function readbin(binfile, readbytes, pos, readtype, isbigint) {
+function readbin(readbytes, pos, readtype, isbigint) {
 	var buff = new Buffer(readbytes);
 	var fd = fs.openSync(binfile, 'r');
-	totalread = fs.readSync(fd, buff, 0, readbytes, pos - 1);
+	totalread = fs.readSync(fd, buff, 0, readbytes, pos);
 	fs.closeSync(fd);
 	
 	if (totalread == readbytes) {
@@ -85,50 +118,26 @@ function readbin(binfile, readbytes, pos, readtype, isbigint) {
 }
 
 // Read 8 bits integer in the database
-function read8(pos, iptype) {
-	binfile = "";
+function read8(pos) {
 	readbytes = 1;
-	
-	if (iptype == 4) { // IPv4
-		binfile = fileIPv4;
-	}
-	else if (iptype == 6) { // IPv6
-		binfile = fileIPv6;
-	}
-	return readbin(binfile, readbytes, pos, "int8");
+	return readbin(readbytes, pos - 1, "int8");
 }
 
 // Read 32 bits integer in the database
-function read32(pos, iptype, isbigint) {
-	binfile = "";
+function read32(pos, isbigint) {
 	readbytes = 4;
-	
-	if (iptype == 4) { // IPv4
-		binfile = fileIPv4;
-	}
-	else if (iptype == 6) { // IPv6
-		binfile = fileIPv6;
-	}
-	return readbin(binfile, readbytes, pos, "uint32", isbigint);
+	return readbin(readbytes, pos - 1, "uint32", isbigint);
 }
 
 // Read 32 bits float in the database
-function readfloat(pos, iptype) {
-	binfile = "";
+function readfloat(pos) {
 	readbytes = 4;
-	
-	if (iptype == 4) { // IPv4
-		binfile = fileIPv4;
-	}
-	else if (iptype == 6) { // IPv6
-		binfile = fileIPv6;
-	}
-	return readbin(binfile, readbytes, pos, "float");
+	return readbin(readbytes, pos - 1, "float");
 }
 
 function read32or128(pos, iptype) {
 	if (iptype == 4) {
-		return read32(pos, iptype, true); // should be bignum here already
+		return read32(pos, true); // should be bignum here already
 	}
 	else if (iptype == 6) {
 		return read128(pos); // only IPv6 will run this; already returning bignum object
@@ -140,25 +149,14 @@ function read32or128(pos, iptype) {
 
 // Read 128 bits integer in the database
 function read128(pos) {
-	binfile = fileIPv6; // only IPv6 will call this function
 	readbytes = 16;
-	
-	return readbin(binfile, readbytes, pos, "int128"); // returning bignum object
+	return readbin(readbytes, pos - 1, "int128"); // returning bignum object
 }
 
 // Read strings in the database
-function readstr(pos, iptype) {
-	binfile = "";
+function readstr(pos) {
 	readbytes = 1;
-	
-	if (iptype == 4) { // IPv4
-		binfile = fileIPv4;
-	}
-	else if (iptype == 6) { // IPv6
-		binfile = fileIPv6;
-	}
-	
-	return readbin(binfile, readbin(binfile, readbytes, pos + 1, "int8"), pos + 2, "str");
+	return readbin(readbin(readbytes, pos, "int8"), pos + 1, "str");
 }
 
 function dot2num(IPv4) {
@@ -197,46 +195,85 @@ function ip2no(IPv6) {
 	return total;
 }
 
-exports.IP2Location_init = function IP2Location_init(binpathIPv4, binpathIPv6) {
-	fileIPv4 = binpathIPv4;
-	fileIPv6 = binpathIPv6;
+exports.IP2Location_init = function IP2Location_init(binpath) {
+	binfile = binpath;
 	
-	if (fileIPv4 && (fileIPv4 != "")) {
-		mydb_IPv4._DBType = read8(1, 4);
-		mydb_IPv4._DBColumn = read8(2, 4);
-		mydb_IPv4._DBYear = read8(3, 4);
-		mydb_IPv4._DBMonth = read8(4, 4);
-		mydb_IPv4._DBDay = read8(5, 4);
-		mydb_IPv4._DBCount = read32(6, 4);
-		mydb_IPv4._BaseAddr = read32(10, 4);
-	}
-	
-	if (fileIPv6 && (fileIPv6 != "")) {
-		mydb_IPv6._DBType = read8(1, 6);
-		mydb_IPv6._DBColumn = read8(2, 6);
-		mydb_IPv6._DBYear = read8(3, 6);
-		mydb_IPv6._DBMonth = read8(4, 6);
-		mydb_IPv6._DBDay = read8(5, 6);
-		mydb_IPv6._DBCount = read32(6, 6);
-		mydb_IPv6._BaseAddr = read32(10, 6);
+	if (binfile && (binfile != "")) {
+		mydb._DBType = read8(1);
+		mydb._DBColumn = read8(2);
+		mydb._DBYear = read8(3);
+		mydb._DBMonth = read8(4);
+		mydb._DBDay = read8(5);
+		mydb._DBCount = read32(6);
+		mydb._BaseAddr = read32(10);
+		mydb._DBCountIPv6 = read32(14);
+		mydb._BaseAddrIPv6 = read32(18);
+		if (mydb._DBCountIPv6 == 0) {
+			mydb._OldBIN = 1;
+		}
+		
+		IPv4ColumnSize = mydb._DBColumn << 2; // 4 bytes each column
+		IPv6ColumnSize = 16 + ((mydb._DBColumn - 1) << 2); // 4 bytes each column, except IPFrom column which is 16 bytes
+		
+		var dbt = mydb._DBType;
+		
+		// since both IPv4 and IPv6 use 4 bytes for the below columns, can just do it once here
+		country_pos_offset = (country_pos[dbt] != 0) ? (country_pos[dbt] - 1) << 2 : 0;
+		region_pos_offset = (region_pos[dbt] != 0) ? (region_pos[dbt] - 1) << 2 : 0;
+		city_pos_offset = (city_pos[dbt] != 0) ? (city_pos[dbt] - 1) << 2 : 0;
+		isp_pos_offset = (isp_pos[dbt] != 0) ? (isp_pos[dbt] - 1) << 2 : 0;
+		domain_pos_offset = (domain_pos[dbt] != 0) ? (domain_pos[dbt] - 1) << 2 : 0;
+		zipcode_pos_offset = (zipcode_pos[dbt] != 0) ? (zipcode_pos[dbt] - 1) << 2 : 0;
+		latitude_pos_offset = (latitude_pos[dbt] != 0) ? (latitude_pos[dbt] - 1) << 2 : 0;
+		longitude_pos_offset = (longitude_pos[dbt] != 0) ? (longitude_pos[dbt] - 1) << 2 : 0;
+		timezone_pos_offset = (timezone_pos[dbt] != 0) ? (timezone_pos[dbt] - 1) << 2 : 0;
+		netspeed_pos_offset = (netspeed_pos[dbt] != 0) ? (netspeed_pos[dbt] - 1) << 2 : 0;
+		iddcode_pos_offset = (iddcode_pos[dbt] != 0) ? (iddcode_pos[dbt] - 1) << 2 : 0;
+		areacode_pos_offset = (areacode_pos[dbt] != 0) ? (areacode_pos[dbt] - 1) << 2 : 0;
+		weatherstationcode_pos_offset = (weatherstationcode_pos[dbt] != 0) ? (weatherstationcode_pos[dbt] - 1) << 2 : 0;
+		weatherstationname_pos_offset = (weatherstationname_pos[dbt] != 0) ? (weatherstationname_pos[dbt] - 1) << 2 : 0;
+		mcc_pos_offset = (mcc_pos[dbt] != 0) ? (mcc_pos[dbt] - 1) << 2 : 0;
+		mnc_pos_offset = (mnc_pos[dbt] != 0) ? (mnc_pos[dbt] - 1) << 2 : 0;
+		mobilebrand_pos_offset = (mobilebrand_pos[dbt] != 0) ? (mobilebrand_pos[dbt] - 1) << 2 : 0;
+		elevation_pos_offset = (elevation_pos[dbt] != 0) ? (elevation_pos[dbt] - 1) << 2 : 0;
+		usagetype_pos_offset = (usagetype_pos[dbt] != 0) ? (usagetype_pos[dbt] - 1) << 2 : 0;
+		
+		country_enabled = (country_pos[dbt] != 0) ? 1 : 0;
+		region_enabled = (region_pos[dbt] != 0) ? 1 : 0;
+		city_enabled = (city_pos[dbt] != 0) ? 1 : 0;
+		isp_enabled = (isp_pos[dbt] != 0) ? 1 : 0;
+		latitude_enabled = (latitude_pos[dbt] != 0) ? 1 : 0;
+		longitude_enabled = (longitude_pos[dbt] != 0) ? 1 : 0;
+		domain_enabled = (domain_pos[dbt] != 0) ? 1 : 0;
+		zipcode_enabled = (zipcode_pos[dbt] != 0) ? 1 : 0;
+		timezone_enabled = (timezone_pos[dbt] != 0) ? 1 : 0;
+		netspeed_enabled = (netspeed_pos[dbt] != 0) ? 1 : 0;
+		iddcode_enabled = (iddcode_pos[dbt] != 0) ? 1 : 0;
+		areacode_enabled = (areacode_pos[dbt] != 0) ? 1 : 0;
+		weatherstationcode_enabled = (weatherstationcode_pos[dbt] != 0) ? 1 : 0;
+		weatherstationname_enabled = (weatherstationname_pos[dbt] != 0) ? 1 : 0;
+		mcc_enabled = (mcc_pos[dbt] != 0) ? 1 : 0;
+		mnc_enabled = (mnc_pos[dbt] != 0) ? 1 : 0;
+		mobilebrand_enabled = (mobilebrand_pos[dbt] != 0) ? 1 : 0;
+		elevation_enabled = (elevation_pos[dbt] != 0) ? 1 : 0;
+		usagetype_enabled = (usagetype_pos[dbt] != 0) ? 1 : 0;
 	}
 }
 
 function IP2Location_query(myIP, iptype, data) {
+	_DBType = mydb._DBType;
+	_DBColumn = mydb._DBColumn;
+	
 	if (iptype == 4) { // IPv4
-		binfile = fileIPv4;
-		_DBType = mydb_IPv4._DBType;
-		_DBColumn = mydb_IPv4._DBColumn;
-		_DBCount = mydb_IPv4._DBCount;
-		_BaseAddr = mydb_IPv4._BaseAddr;
+		_DBCount = mydb._DBCount;
+		_BaseAddr = mydb._BaseAddr;
+		_ColumnSize = IPv4ColumnSize;
 		ipnum = dot2num(myIP);
 	}
 	else if (iptype == 6) { // IPv6
-		binfile = fileIPv6;
-		_DBType = mydb_IPv6._DBType;
-		_DBColumn = mydb_IPv6._DBColumn;
-		_DBCount = mydb_IPv6._DBCount;
-		_BaseAddr = mydb_IPv6._BaseAddr;
+		_DBCount = mydb._DBCountIPv6;
+		_BaseAddr = mydb._BaseAddrIPv6;
+		_ColumnSize = IPv6ColumnSize;
 		ipnum = ip2no(myIP);
 	}
 	
@@ -250,17 +287,9 @@ function IP2Location_query(myIP, iptype, data) {
 	
 	while (low <= high) {
 		mid = parseInt((low + high) / 2);
+		rowoffset = _BaseAddr + (mid * _ColumnSize)
+		rowoffset2 = rowoffset + _ColumnSize
 		
-		switch (iptype) {
-			case 4:
-				rowoffset = _BaseAddr + (mid * _DBColumn * 4); // 4 bytes in each column
-				rowoffset2 = _BaseAddr + ((mid + 1) * _DBColumn * 4); // 4 bytes in each column
-				break;
-			case 6:
-				rowoffset = _BaseAddr + (mid * (16 + ((_DBColumn - 1) * 4))); // IPFrom is 16 bytes, the rest 4 bytes
-				rowoffset2 = _BaseAddr + ((mid + 1) * (16 + ((_DBColumn - 1) * 4))); // IPFrom is 16 bytes, the rest 4 bytes
-		}
-
 		var ipfrom = read32or128(rowoffset, iptype);
 		var ipto = read32or128(rowoffset2, iptype);
 		
@@ -277,64 +306,65 @@ function IP2Location_query(myIP, iptype, data) {
 			if (iptype == 6) { // IPv6
 				rowoffset = rowoffset + 12; // coz below is assuming all columns are 4 bytes, so got 12 left to go to make 16 bytes total
 			}
-
-			if (country_pos[_DBType] != 0) {
-				data.country_short = readstr(read32(rowoffset + 4 * (country_pos[_DBType] - 1), iptype), iptype)
-				data.country_long = readstr(read32(rowoffset + 4 * (country_pos[_DBType] - 1), iptype) + 3, iptype)
+			
+			if (country_enabled) {
+				countrypos = read32(rowoffset + country_pos_offset);
+				data.country_short = readstr(countrypos);
+				data.country_long = readstr(countrypos + 3);
 			}
-			if (region_pos[_DBType] != 0) {
-				data.region = readstr(read32(rowoffset + 4 * (region_pos[_DBType] - 1), iptype), iptype)
+			if (region_enabled) {
+				data.region = readstr(read32(rowoffset + region_pos_offset));
 			}
-			if (city_pos[_DBType] != 0) {
-				data.city = readstr(read32(rowoffset + 4 * (city_pos[_DBType] - 1), iptype), iptype)
+			if (city_enabled) {
+				data.city = readstr(read32(rowoffset + city_pos_offset));
 			}
-			if (isp_pos[_DBType] != 0) {
-				data.isp = readstr(read32(rowoffset + 4 * (isp_pos[_DBType] - 1), iptype), iptype)
+			if (isp_enabled) {
+				data.isp = readstr(read32(rowoffset + isp_pos_offset));
 			}
-			if (domain_pos[_DBType] != 0) {
-				data.domain = readstr(read32(rowoffset + 4 * (domain_pos[_DBType] - 1), iptype), iptype)
+			if (domain_enabled) {
+				data.domain = readstr(read32(rowoffset + domain_pos_offset));
 			}
-			if (zipcode_pos[_DBType] != 0) {
-				data.zipcode = readstr(read32(rowoffset + 4 * (zipcode_pos[_DBType] - 1), iptype), iptype)
+			if (zipcode_enabled) {
+				data.zipcode = readstr(read32(rowoffset + zipcode_pos_offset));
 			}
-			if (latitude_pos[_DBType] != 0) {
-				data.latitude = readfloat(rowoffset + 4 * (latitude_pos[_DBType] - 1), iptype)
+			if (latitude_enabled) {
+				data.latitude = readfloat(rowoffset + latitude_pos_offset)
 			}
-			if (longitude_pos[_DBType] != 0) {
-				data.longitude = readfloat(rowoffset + 4 * (longitude_pos[_DBType] - 1), iptype)
+			if (longitude_enabled) {
+				data.longitude = readfloat(rowoffset + longitude_pos_offset)
 			}
-			if (timezone_pos[_DBType] != 0) {
-				data.timezone = readstr(read32(rowoffset + 4 * (timezone_pos[_DBType] - 1), iptype), iptype)
+			if (timezone_enabled) {
+				data.timezone = readstr(read32(rowoffset + timezone_pos_offset));
 			}
-			if (netspeed_pos[_DBType] != 0) {
-				data.netspeed = readstr(read32(rowoffset + 4 * (netspeed_pos[_DBType] - 1), iptype), iptype)
+			if (netspeed_enabled) {
+				data.netspeed = readstr(read32(rowoffset + netspeed_pos_offset));
 			}
-			if (iddcode_pos[_DBType] != 0) {
-				data.iddcode = readstr(read32(rowoffset + 4 * (iddcode_pos[_DBType] - 1), iptype), iptype)
+			if (iddcode_enabled) {
+				data.iddcode = readstr(read32(rowoffset + iddcode_pos_offset));
 			}
-			if (areacode_pos[_DBType] != 0) {
-				data.areacode = readstr(read32(rowoffset + 4 * (areacode_pos[_DBType] - 1), iptype), iptype)
+			if (areacode_enabled) {
+				data.areacode = readstr(read32(rowoffset + areacode_pos_offset));
 			}
-			if (weatherstationcode_pos[_DBType] != 0) {
-				data.weatherstationcode = readstr(read32(rowoffset + 4 * (weatherstationcode_pos[_DBType] - 1), iptype), iptype)
+			if (weatherstationcode_enabled) {
+				data.weatherstationcode = readstr(read32(rowoffset + weatherstationcode_pos_offset));
 			}
-			if (weatherstationname_pos[_DBType] != 0) {
-				data.weatherstationname = readstr(read32(rowoffset + 4 * (weatherstationname_pos[_DBType] - 1), iptype), iptype)
+			if (weatherstationname_enabled) {
+				data.weatherstationname = readstr(read32(rowoffset + weatherstationname_pos_offset));
 			}
-			if (mcc_pos[_DBType] != 0) {
-				data.mcc = readstr(read32(rowoffset + 4 * (mcc_pos[_DBType] - 1), iptype), iptype)
+			if (mcc_enabled) {
+				data.mcc = readstr(read32(rowoffset + mcc_pos_offset));
 			}
-			if (mnc_pos[_DBType] != 0) {
-				data.mnc = readstr(read32(rowoffset + 4 * (mnc_pos[_DBType] - 1), iptype), iptype)
+			if (mnc_enabled) {
+				data.mnc = readstr(read32(rowoffset + mnc_pos_offset));
 			}
-			if (mobilebrand_pos[_DBType] != 0) {
-				data.mobilebrand = readstr(read32(rowoffset + 4 * (mobilebrand_pos[_DBType] - 1), iptype), iptype)
+			if (mobilebrand_enabled) {
+				data.mobilebrand = readstr(read32(rowoffset + mobilebrand_pos_offset));
 			}
-			if (elevation_pos[_DBType] != 0) {
-				data.elevation = readstr(read32(rowoffset + 4 * (elevation_pos[_DBType] - 1), iptype), iptype)
+			if (elevation_enabled) {
+				data.elevation = readstr(read32(rowoffset + elevation_pos_offset));
 			}
-			if (usagetype_pos[_DBType] != 0) {
-				data.usagetype = readstr(read32(rowoffset + 4 * (usagetype_pos[_DBType] - 1), iptype), iptype)
+			if (usagetype_enabled) {
+				data.usagetype = readstr(read32(rowoffset + usagetype_pos_offset));
 			}
 			data.status = "OK";
 			return;
@@ -356,7 +386,7 @@ exports.IP2Location_get_all = function IP2Location_get_all(myIP) {
 		"ip": "?",
 		"ip_no": "?",
 		"country_short": "?",
-		"country_short": "?",
+		"country_long": "?",
 		"region": "?",
 		"city": "?",
 		"isp": "?",
@@ -378,26 +408,26 @@ exports.IP2Location_get_all = function IP2Location_get_all(myIP) {
 		"status": "?"
 	};
 	
+	if (/^[:0]+:F{4}:(\d+\.){3}\d+$/i.test(myIP)) {
+		myIP = myIP.replace(/^[:0]+:F{4}:/i, '');
+	}
+	
 	iptype = net.isIP(myIP);
 	
 	if (iptype == 0) {
 		data.status = "INVALID_IP_ADDRESS";
 		return data;
 	}
-	else if ((iptype == 4) && ((!fileIPv4) || (fileIPv4 == "") || (!fs.existsSync(fileIPv4)))) {
+	else if ((!binfile) || (binfile == "") || (!fs.existsSync(binfile))) {
 		data.status = "MISSING_FILE";
 		return data;
 	}
-	else if ((iptype == 4) && (mydb_IPv4._DBType == 0)) {
+	else if (mydb._DBType == 0) {
 		data.status = "RUN_INIT_FIRST";
 		return data;
 	}
-	else if ((iptype == 6) && ((!fileIPv6) || (fileIPv6 == "") || (!fs.existsSync(fileIPv6)))) {
-		data.status = "MISSING_FILE";
-		return data;
-	}
-	else if ((iptype == 6) && (mydb_IPv6._DBType == 0)) {
-		data.status = "RUN_INIT_FIRST";
+	else if ((iptype == 6) && (mydb._OldBIN == 1)) {
+		data.status = "IPV6_NOT_SUPPORTED";
 		return data;
 	}
 	else {
