@@ -1,8 +1,8 @@
 var net = require("net");
 var fs = require("fs");
-var bignum = require("bignum");
+var bigInt = require("big-integer");
 
-var version = "7.0";
+var version = "7.0.1";
 var binfile = "";
 var IPv4ColumnSize = 0;
 var IPv6ColumnSize = 0;
@@ -93,13 +93,13 @@ function readbin(readbytes, pos, readtype, isbigint) {
 	if (totalread == readbytes) {
 		switch (readtype) {
 			case "int8":
-				return buff.readInt8(0);
+				return buff.readUInt8(0);
 				break;
 			case "int32":
 				return buff.readInt32LE(0);
 				break;
 			case "uint32":
-				return (isbigint) ? bignum.fromBuffer(buff, { endian: 'small', size: 'auto' }) : buff.readUInt32LE(0);
+				return (isbigint) ? bigInt(buff.readUInt32LE(0)) : buff.readUInt32LE(0);
 				break;
 			case "float":
 				return buff.readFloatLE(0);
@@ -108,7 +108,12 @@ function readbin(readbytes, pos, readtype, isbigint) {
 				return buff.toString("utf8");
 				break;
 			case "int128":
-				return bignum.fromBuffer(buff, { endian: 'small', size: 'auto' });
+				var mybig = bigInt(); // zero
+				var bitshift = 8;
+				for (var x = 0; x < 16; x++) {
+					mybig = mybig.add(bigInt(buff.readUInt8(x)).shiftLeft(bitshift * x));
+				}
+				return mybig;
 				break;
 		}
 	}
@@ -137,10 +142,10 @@ function readfloat(pos) {
 
 function read32or128(pos, iptype) {
 	if (iptype == 4) {
-		return read32(pos, true); // should be bignum here already
+		return read32(pos, true); // should be bigInt here already
 	}
 	else if (iptype == 6) {
-		return read128(pos); // only IPv6 will run this; already returning bignum object
+		return read128(pos); // only IPv6 will run this; already returning bigInt object
 	}
 	else {
 		return 0;
@@ -150,7 +155,7 @@ function read32or128(pos, iptype) {
 // Read 128 bits integer in the database
 function read128(pos) {
 	readbytes = 16;
-	return readbin(readbytes, pos - 1, "int128"); // returning bignum object
+	return readbin(readbytes, pos - 1, "int128"); // returning bigInt object
 }
 
 // Read strings in the database
@@ -169,7 +174,7 @@ function ip2no(IPv6) {
 	var sectionbits = 16; // 16 bits per section
 	var m = IPv6.split('::');
 	
-	var total = bignum("0");
+	var total = bigInt(); // zero
 	
 	if (m.length == 2) {
 		var myarrleft = m[0].split(":");
@@ -177,18 +182,18 @@ function ip2no(IPv6) {
 		var myarrmid = maxsections - myarrleft.length - myarrright.length;
 		
 		for (var x = 0; x < myarrleft.length; x++) {
-			total = total.add(bignum(parseInt("0x" + myarrleft[x]).toString()).shiftLeft((maxsections - (x + 1)) * sectionbits));
+			total = total.add(bigInt(parseInt("0x" + myarrleft[x])).shiftLeft((maxsections - (x + 1)) * sectionbits));
 		}
 		
 		for (var x = 0; x < myarrright.length; x++) {
-			total = total.add(bignum(parseInt("0x" + myarrright[x]).toString()).shiftLeft((myarrright.length - (x + 1)) * sectionbits));
+			total = total.add(bigInt(parseInt("0x" + myarrright[x])).shiftLeft((myarrright.length - (x + 1)) * sectionbits));
 		}
 	}
 	else if (m.length == 1) {
 		var myarr = m[0].split(":");
 		
 		for (var x = 0; x < myarr.length; x++) {
-			total = total.add(bignum(parseInt("0x" + myarr[x]).toString()).shiftLeft((maxsections - (x + 1)) * sectionbits));
+			total = total.add(bigInt(parseInt("0x" + myarr[x])).shiftLeft((maxsections - (x + 1)) * sectionbits));
 		}
 	}
 	
@@ -283,7 +288,8 @@ function IP2Location_query(myIP, iptype, data) {
 	high = _DBCount;
 	
 	data.ip = myIP;
-	data.ip_no = (ipnum instanceof bignum) ? ipnum.toString() : ipnum;
+	ipnum = bigInt(ipnum);
+	data.ip_no = ipnum.toString();
 	
 	while (low <= high) {
 		mid = parseInt((low + high) / 2);
@@ -293,7 +299,10 @@ function IP2Location_query(myIP, iptype, data) {
 		var ipfrom = read32or128(rowoffset, iptype);
 		var ipto = read32or128(rowoffset2, iptype);
 		
-		if (ipfrom.le(ipnum) && ipto.gt(ipnum)) {
+		ipfrom = bigInt(ipfrom);
+		ipto = bigInt(ipto);
+		
+		if (ipfrom.leq(ipnum) && ipto.gt(ipnum)) {
 			for (var key in data) {
 				if (/^(ip|ip_no|latitude|longitude|elevation)$/i.test(key) === false) {
 					data[key] = MSG_NOT_SUPPORTED;
