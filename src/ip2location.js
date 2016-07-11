@@ -2,13 +2,17 @@ var net = require("net");
 var fs = require("fs");
 var bigInt = require("big-integer");
 
-var version = "7.0.1";
+var version = "8.0.0";
 var binfile = "";
 var IPv4ColumnSize = 0;
 var IPv6ColumnSize = 0;
 var low = 0;
 var high = 0;
 var mid = 0;
+
+var maxindex = 65536;
+var IndexArrayIPv4 = Array(maxindex);
+var IndexArrayIPv6 = Array(maxindex);
 
 var country_pos = [0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2];
 var region_pos = [0, 0, 0, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3];
@@ -80,7 +84,11 @@ var mydb = {
 	"_BaseAddr": 0,
 	"_DBCountIPv6": 0,
 	"_BaseAddrIPv6": 0,
-	"_OldBIN": 0
+	"_OldBIN": 0,
+	"_Indexed": 0,
+	"_IndexedIPv6": 0,
+	"_IndexBaseAddr": 0,
+	"_IndexBaseAddrIPv6": 0
 };
 
 // Read binary data
@@ -177,8 +185,8 @@ function ip2no(IPv6) {
 	var total = bigInt(); // zero
 	
 	if (m.length == 2) {
-		var myarrleft = m[0].split(":");
-		var myarrright = m[1].split(":");
+		var myarrleft = (m[0] != '') ? m[0].split(":") : [];
+		var myarrright = (m[1] != '') ? m[1].split(":") : [];
 		var myarrmid = maxsections - myarrleft.length - myarrright.length;
 		
 		for (var x = 0; x < myarrleft.length; x++) {
@@ -213,8 +221,18 @@ exports.IP2Location_init = function IP2Location_init(binpath) {
 		mydb._BaseAddr = read32(10);
 		mydb._DBCountIPv6 = read32(14);
 		mydb._BaseAddrIPv6 = read32(18);
+		mydb._IndexBaseAddr = read32(22);
+		mydb._IndexBaseAddrIPv6 = read32(26);
+		
+		if (mydb._IndexBaseAddr > 0) {
+			mydb._Indexed = 1;
+		}
+		
 		if (mydb._DBCountIPv6 == 0) {
 			mydb._OldBIN = 1;
+		}
+		else if (mydb._IndexBaseAddrIPv6 > 0) {
+			mydb._IndexedIPv6 = 1;
 		}
 		
 		IPv4ColumnSize = mydb._DBColumn << 2; // 4 bytes each column
@@ -262,30 +280,61 @@ exports.IP2Location_init = function IP2Location_init(binpath) {
 		mobilebrand_enabled = (mobilebrand_pos[dbt] != 0) ? 1 : 0;
 		elevation_enabled = (elevation_pos[dbt] != 0) ? 1 : 0;
 		usagetype_enabled = (usagetype_pos[dbt] != 0) ? 1 : 0;
+		
+		if (mydb._Indexed == 1) {
+			var pointer = mydb._IndexBaseAddr;
+			
+			for (var x = 0; x < maxindex; x++) {
+				IndexArrayIPv4[x] = Array(2);
+				IndexArrayIPv4[x][0] = read32(pointer);
+				IndexArrayIPv4[x][1] = read32(pointer + 4);
+				pointer += 8;
+			}
+			
+			if (mydb._IndexedIPv6 == 1) {
+				for (var x = 0; x < maxindex; x++) {
+					IndexArrayIPv6[x] = Array(2);
+					IndexArrayIPv6[x][0] = read32(pointer);
+					IndexArrayIPv6[x][1] = read32(pointer + 4);
+					pointer += 8;
+				}
+			}
+		}
 	}
 }
 
 function IP2Location_query(myIP, iptype, data) {
 	_DBType = mydb._DBType;
 	_DBColumn = mydb._DBColumn;
-	
+	low = 0;
+	mid = 0;
+	high = 0;
 	if (iptype == 4) { // IPv4
-		_DBCount = mydb._DBCount;
+		high = mydb._DBCount;
 		_BaseAddr = mydb._BaseAddr;
 		_ColumnSize = IPv4ColumnSize;
 		ipnum = dot2num(myIP);
+		
+		if (mydb._Indexed == 1) {
+			indexaddr = ipnum >>> 16;
+			low = IndexArrayIPv4[indexaddr][0];
+			high = IndexArrayIPv4[indexaddr][1];
+		}
 	}
 	else if (iptype == 6) { // IPv6
-		_DBCount = mydb._DBCountIPv6;
+		high = mydb._DBCountIPv6;
 		_BaseAddr = mydb._BaseAddrIPv6;
 		_ColumnSize = IPv6ColumnSize;
 		ipnum = ip2no(myIP);
+		
+		if (mydb._IndexedIPv6 == 1) {
+			indexaddr = ipnum.shiftRight(112).toJSNumber();
+			low = IndexArrayIPv6[indexaddr][0];
+			high = IndexArrayIPv6[indexaddr][1];
+		}
 	}
 	
 	MSG_NOT_SUPPORTED = "This method is not applicable for current IP2Location binary data file. Please upgrade your subscription package to install new data file.";
-	low = 0;
-	mid = 0;
-	high = _DBCount;
 	
 	data.ip = myIP;
 	ipnum = bigInt(ipnum);
@@ -337,10 +386,10 @@ function IP2Location_query(myIP, iptype, data) {
 				data.zipcode = readstr(read32(rowoffset + zipcode_pos_offset));
 			}
 			if (latitude_enabled) {
-				data.latitude = readfloat(rowoffset + latitude_pos_offset)
+				data.latitude = Math.round(readfloat(rowoffset + latitude_pos_offset) * 1000000, 6) / 1000000;
 			}
 			if (longitude_enabled) {
-				data.longitude = readfloat(rowoffset + longitude_pos_offset)
+				data.longitude = Math.round(readfloat(rowoffset + longitude_pos_offset) * 1000000, 6) / 1000000;
 			}
 			if (timezone_enabled) {
 				data.timezone = readstr(read32(rowoffset + timezone_pos_offset));
