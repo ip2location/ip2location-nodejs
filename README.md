@@ -28,9 +28,13 @@ To install this module type the following:
 Dependencies
 ============
 
-The complete database is available at http://www.ip2location.com under subscription package.
+This library requires IP2Location BIN data file to function. You may download the BIN data file at
+* IP2Location LITE BIN Data (Free): http://lite.ip2location.com
+* IP2Location Commercial BIN Data (Comprehensive): http://www.ip2location.com
+
 
 Copyright
 =========
+Copyright (C) 2016 by IP2Location.com
 
-Copyright (C) 2016 by IP2Location.com, support@ip2location.com
+Licensed under LGPLv3
