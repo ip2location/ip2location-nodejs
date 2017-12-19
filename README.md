@@ -37,4 +37,4 @@ Copyright
 =========
 Copyright (C) 2016 by IP2Location.com
 
-Licensed under LGPLv3
+Licensed under MIT
