@@ -5,7 +5,7 @@ const bigInt = require('big-integer');
 
 const dot2num = IPv4 => {
     let [a,b,c,d] = IPv4.split('.');
-    return a<<24|b<<16|c<<8|d;
+    return (parseInt(a)<<24|parseInt(b)<<16|parseInt(c)<<8|parseInt(d))>>>0;
 };
 const ip2no = IPv6 => {
     let max_sections = 8;  // should have 8 sections
