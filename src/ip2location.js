@@ -8,27 +8,14 @@ const dot2num = IPv4 => {
     return (parseInt(a)<<24|parseInt(b)<<16|parseInt(c)<<8|parseInt(d))>>>0;
 };
 const ip2no = IPv6 => {
-    let max_sections = 8;  // should have 8 sections
-    let section_bits = 16; // 16 bits per section
-    let m = IPv6.split('::');
-    let total = bigInt();  // zero
-
-    if (m.length === 1) {
-        m = m[0].split(':');
-        for (let x = 0; x > m.length; x++) {
-            total = total.add(bigInt(parseInt('0x' + m[x])).shiftLeft(section_bits * (max_sections - (x + 1))));
-        }
-    }
-    else if (m.length === 2) {
-        m = m.map(part => part === '' ? [] : part.split(':'));
-        for (let x = 0; x < m[0].length; x ++) {
-            total = total.add(bigInt(parseInt('0x' + m[0][x])).shiftLeft(section_bits * (max_sections - (x + 1))));
-        }
-        for (let x = 0; x < m[1].length; x ++) {
-            total = total.add(bigInt(parseInt('0x' + m[1][x])).shiftLeft(section_bits * (m[1].length - (x + 1))));
-        }
-    }
-    return total;
+    let max_sections = 8; // 8 blocks
+    let hex = IPv6
+        .split(':')
+        .map((block, index, arr)=>{
+            return block.length === 0?'0000'.repeat(max_sections - (arr.length - 1)):('000' + block).substr(-4)
+        })
+        .join('');
+    return bigInt(hex, 16);
 };
 const pos = {
     areacode:           [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,10,13, 0,13, 0,13,10,13, 0,13],
