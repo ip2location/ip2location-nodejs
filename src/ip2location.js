@@ -4,7 +4,7 @@ var bigInt = require("big-integer");
 
 var fd;
 
-var version = "8.1.1";
+var version = "8.1.2";
 var binfile = "";
 var IPv4ColumnSize = 0;
 var IPv6ColumnSize = 0;
@@ -471,7 +471,15 @@ exports.IP2Location_get_all = function IP2Location_get_all(myIP) {
 	if (/^[:0]+:F{4}:(\d+\.){3}\d+$/i.test(myIP)) {
 		myIP = myIP.replace(/^[:0]+:F{4}:/i, '');
 	}
-	
+	else if (/^[:0]+F{4}(:[\dA-Z]{4}){2}$/i.test(myIP)) {
+		tmp = myIP.replace(/^[:0]+F{4}:/i, '');
+		tmp = tmp.replace(/:/, '');
+		tmparr = [];
+		for (var x = 0; x < 8; x = x + 2) {
+			tmparr.push(parseInt("0x" + tmp.substring(x, x + 2)));
+		}
+		myIP = tmparr.join('.');
+	}
 	iptype = net.isIP(myIP);
 	
 	if (iptype == 0) {
