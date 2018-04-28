@@ -4,7 +4,7 @@ var bigInt = require("big-integer");
 
 var fd;
 
-var version = "8.1.2";
+var version = "8.1.3";
 var binfile = "";
 var IPv4ColumnSize = 0;
 var IPv6ColumnSize = 0;

@@ -1,6 +1,6 @@
 {
 	"name": "ip2location-nodejs",
-	"version": "8.1.2",
+	"version": "8.1.3",
 	"description": "IP2Location geolocation component",
 	"keywords": [
 		"ip2location",
@@ -20,8 +20,7 @@
 	"main": "src/ip2location.js",
 	"license": "MIT",
 	"dependencies": {
-		"big-integer": "^1.6.27",
-		"npm": "^5.8.0"
+		"big-integer": "^1.6.27"
 	},
 	"repository": {
 		"type": "git",
