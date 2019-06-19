@@ -1,0 +1,21 @@
+{
+  "name": "ip2location-nodejs",
+  "description": "This Node.js module provides a fast lookup of geolocation information from IP address by using IP2Location database.",
+  "main": "src/ip2location.js",
+  "keywords": [
+    "ip2location",
+    "geolocation"
+  ],
+  "authors": [
+    "IP2Location.com <sales@ip2location.com> (https://www.ip2location.com/)"
+  ],
+  "license": "MIT",
+  "homepage": "https://www.ip2location.com/",
+  "dependencies": {
+    "big-integer": "^1.6.27"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ip2location-nodejs/IP2Location.git"
+  }
+}
