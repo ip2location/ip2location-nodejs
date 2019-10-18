@@ -4,7 +4,7 @@ var bigInt = require("big-integer");
 
 var fd;
 
-var version = "8.2.0";
+var version = "8.3.0";
 var binfile = "";
 var IPv4ColumnSize = 0;
 var IPv6ColumnSize = 0;
@@ -101,6 +101,13 @@ var mydb = {
 	"_IndexBaseAddrIPv6": 0
 };
 
+// Read row data
+function readrow(readbytes, pos) {
+	var buff = new Buffer.alloc(readbytes);
+	totalread = fs.readSync(fd, buff, 0, readbytes, pos - 1);
+	return buff;
+}
+
 // Read binary data
 function readbin(readbytes, pos, readtype, isbigint) {
 	var buff = new Buffer.alloc(readbytes);
@@ -150,10 +157,21 @@ function read32(pos, isbigint) {
 	return readbin(readbytes, pos - 1, "uint32", isbigint);
 }
 
+// Read 32 bits integer in the buffer
+function read32_row(pos, buff) {
+	return buff.readUInt32LE(pos);
+}
+
 // Read 32 bits float in the database
 function readfloat(pos) {
 	readbytes = 4;
+	return buff.readFloatLE(0);
 	return readbin(readbytes, pos - 1, "float");
+}
+
+// Read 32 bits float in the buffer
+function readfloat_row(pos, buff) {
+	return buff.readFloatLE(pos);
 }
 
 function read32or128(pos, iptype) {
@@ -251,25 +269,46 @@ exports.IP2Location_init = function IP2Location_init(binpath) {
 		var dbt = mydb._DBType;
 		
 		// since both IPv4 and IPv6 use 4 bytes for the below columns, can just do it once here
-		country_pos_offset = (country_pos[dbt] != 0) ? (country_pos[dbt] - 1) << 2 : 0;
-		region_pos_offset = (region_pos[dbt] != 0) ? (region_pos[dbt] - 1) << 2 : 0;
-		city_pos_offset = (city_pos[dbt] != 0) ? (city_pos[dbt] - 1) << 2 : 0;
-		isp_pos_offset = (isp_pos[dbt] != 0) ? (isp_pos[dbt] - 1) << 2 : 0;
-		domain_pos_offset = (domain_pos[dbt] != 0) ? (domain_pos[dbt] - 1) << 2 : 0;
-		zipcode_pos_offset = (zipcode_pos[dbt] != 0) ? (zipcode_pos[dbt] - 1) << 2 : 0;
-		latitude_pos_offset = (latitude_pos[dbt] != 0) ? (latitude_pos[dbt] - 1) << 2 : 0;
-		longitude_pos_offset = (longitude_pos[dbt] != 0) ? (longitude_pos[dbt] - 1) << 2 : 0;
-		timezone_pos_offset = (timezone_pos[dbt] != 0) ? (timezone_pos[dbt] - 1) << 2 : 0;
-		netspeed_pos_offset = (netspeed_pos[dbt] != 0) ? (netspeed_pos[dbt] - 1) << 2 : 0;
-		iddcode_pos_offset = (iddcode_pos[dbt] != 0) ? (iddcode_pos[dbt] - 1) << 2 : 0;
-		areacode_pos_offset = (areacode_pos[dbt] != 0) ? (areacode_pos[dbt] - 1) << 2 : 0;
-		weatherstationcode_pos_offset = (weatherstationcode_pos[dbt] != 0) ? (weatherstationcode_pos[dbt] - 1) << 2 : 0;
-		weatherstationname_pos_offset = (weatherstationname_pos[dbt] != 0) ? (weatherstationname_pos[dbt] - 1) << 2 : 0;
-		mcc_pos_offset = (mcc_pos[dbt] != 0) ? (mcc_pos[dbt] - 1) << 2 : 0;
-		mnc_pos_offset = (mnc_pos[dbt] != 0) ? (mnc_pos[dbt] - 1) << 2 : 0;
-		mobilebrand_pos_offset = (mobilebrand_pos[dbt] != 0) ? (mobilebrand_pos[dbt] - 1) << 2 : 0;
-		elevation_pos_offset = (elevation_pos[dbt] != 0) ? (elevation_pos[dbt] - 1) << 2 : 0;
-		usagetype_pos_offset = (usagetype_pos[dbt] != 0) ? (usagetype_pos[dbt] - 1) << 2 : 0;
+		// country_pos_offset = (country_pos[dbt] != 0) ? (country_pos[dbt] - 1) << 2 : 0;
+		// region_pos_offset = (region_pos[dbt] != 0) ? (region_pos[dbt] - 1) << 2 : 0;
+		// city_pos_offset = (city_pos[dbt] != 0) ? (city_pos[dbt] - 1) << 2 : 0;
+		// isp_pos_offset = (isp_pos[dbt] != 0) ? (isp_pos[dbt] - 1) << 2 : 0;
+		// domain_pos_offset = (domain_pos[dbt] != 0) ? (domain_pos[dbt] - 1) << 2 : 0;
+		// zipcode_pos_offset = (zipcode_pos[dbt] != 0) ? (zipcode_pos[dbt] - 1) << 2 : 0;
+		// latitude_pos_offset = (latitude_pos[dbt] != 0) ? (latitude_pos[dbt] - 1) << 2 : 0;
+		// longitude_pos_offset = (longitude_pos[dbt] != 0) ? (longitude_pos[dbt] - 1) << 2 : 0;
+		// timezone_pos_offset = (timezone_pos[dbt] != 0) ? (timezone_pos[dbt] - 1) << 2 : 0;
+		// netspeed_pos_offset = (netspeed_pos[dbt] != 0) ? (netspeed_pos[dbt] - 1) << 2 : 0;
+		// iddcode_pos_offset = (iddcode_pos[dbt] != 0) ? (iddcode_pos[dbt] - 1) << 2 : 0;
+		// areacode_pos_offset = (areacode_pos[dbt] != 0) ? (areacode_pos[dbt] - 1) << 2 : 0;
+		// weatherstationcode_pos_offset = (weatherstationcode_pos[dbt] != 0) ? (weatherstationcode_pos[dbt] - 1) << 2 : 0;
+		// weatherstationname_pos_offset = (weatherstationname_pos[dbt] != 0) ? (weatherstationname_pos[dbt] - 1) << 2 : 0;
+		// mcc_pos_offset = (mcc_pos[dbt] != 0) ? (mcc_pos[dbt] - 1) << 2 : 0;
+		// mnc_pos_offset = (mnc_pos[dbt] != 0) ? (mnc_pos[dbt] - 1) << 2 : 0;
+		// mobilebrand_pos_offset = (mobilebrand_pos[dbt] != 0) ? (mobilebrand_pos[dbt] - 1) << 2 : 0;
+		// elevation_pos_offset = (elevation_pos[dbt] != 0) ? (elevation_pos[dbt] - 1) << 2 : 0;
+		// usagetype_pos_offset = (usagetype_pos[dbt] != 0) ? (usagetype_pos[dbt] - 1) << 2 : 0;
+		
+		// slightly different offset for reading by row
+		country_pos_offset = (country_pos[dbt] != 0) ? (country_pos[dbt] - 2) << 2 : 0;
+		region_pos_offset = (region_pos[dbt] != 0) ? (region_pos[dbt] - 2) << 2 : 0;
+		city_pos_offset = (city_pos[dbt] != 0) ? (city_pos[dbt] - 2) << 2 : 0;
+		isp_pos_offset = (isp_pos[dbt] != 0) ? (isp_pos[dbt] - 2) << 2 : 0;
+		domain_pos_offset = (domain_pos[dbt] != 0) ? (domain_pos[dbt] - 2) << 2 : 0;
+		zipcode_pos_offset = (zipcode_pos[dbt] != 0) ? (zipcode_pos[dbt] - 2) << 2 : 0;
+		latitude_pos_offset = (latitude_pos[dbt] != 0) ? (latitude_pos[dbt] - 2) << 2 : 0;
+		longitude_pos_offset = (longitude_pos[dbt] != 0) ? (longitude_pos[dbt] - 2) << 2 : 0;
+		timezone_pos_offset = (timezone_pos[dbt] != 0) ? (timezone_pos[dbt] - 2) << 2 : 0;
+		netspeed_pos_offset = (netspeed_pos[dbt] != 0) ? (netspeed_pos[dbt] - 2) << 2 : 0;
+		iddcode_pos_offset = (iddcode_pos[dbt] != 0) ? (iddcode_pos[dbt] - 2) << 2 : 0;
+		areacode_pos_offset = (areacode_pos[dbt] != 0) ? (areacode_pos[dbt] - 2) << 2 : 0;
+		weatherstationcode_pos_offset = (weatherstationcode_pos[dbt] != 0) ? (weatherstationcode_pos[dbt] - 2) << 2 : 0;
+		weatherstationname_pos_offset = (weatherstationname_pos[dbt] != 0) ? (weatherstationname_pos[dbt] - 2) << 2 : 0;
+		mcc_pos_offset = (mcc_pos[dbt] != 0) ? (mcc_pos[dbt] - 2) << 2 : 0;
+		mnc_pos_offset = (mnc_pos[dbt] != 0) ? (mnc_pos[dbt] - 2) << 2 : 0;
+		mobilebrand_pos_offset = (mobilebrand_pos[dbt] != 0) ? (mobilebrand_pos[dbt] - 2) << 2 : 0;
+		elevation_pos_offset = (elevation_pos[dbt] != 0) ? (elevation_pos[dbt] - 2) << 2 : 0;
+		usagetype_pos_offset = (usagetype_pos[dbt] != 0) ? (usagetype_pos[dbt] - 2) << 2 : 0;
 		
 		country_enabled = (country_pos[dbt] != 0) ? 1 : 0;
 		region_enabled = (region_pos[dbt] != 0) ? 1 : 0;
@@ -401,68 +440,91 @@ function IP2Location_query(myIP, iptype, data) {
 				}
 			}
 			
+			var firstcol = 4;
 			if (iptype == 6) { // IPv6
-				rowoffset = rowoffset + 12; // coz below is assuming all columns are 4 bytes, so got 12 left to go to make 16 bytes total
+				firstcol = 16;
+				// rowoffset = rowoffset + 12; // coz below is assuming all columns are 4 bytes, so got 12 left to go to make 16 bytes total
 			}
 			
+			var row = readrow(_ColumnSize - firstcol, rowoffset + firstcol);
+			
 			if (country_enabled) {
-				countrypos = read32(rowoffset + country_pos_offset);
+				// countrypos = read32(rowoffset + country_pos_offset);
+				countrypos = read32_row(country_pos_offset, row);
 				data.country_short = readstr(countrypos);
 				data.country_long = readstr(countrypos + 3);
 			}
 			if (region_enabled) {
-				data.region = readstr(read32(rowoffset + region_pos_offset));
+				// data.region = readstr(read32(rowoffset + region_pos_offset));
+				data.region = readstr(read32_row(region_pos_offset, row));
 			}
 			if (city_enabled) {
-				data.city = readstr(read32(rowoffset + city_pos_offset));
+				// data.city = readstr(read32(rowoffset + city_pos_offset));
+				data.city = readstr(read32_row(city_pos_offset, row));
 			}
 			if (isp_enabled) {
-				data.isp = readstr(read32(rowoffset + isp_pos_offset));
+				// data.isp = readstr(read32(rowoffset + isp_pos_offset));
+				data.isp = readstr(read32_row(isp_pos_offset, row));
 			}
 			if (domain_enabled) {
-				data.domain = readstr(read32(rowoffset + domain_pos_offset));
+				// data.domain = readstr(read32(rowoffset + domain_pos_offset));
+				data.domain = readstr(read32_row(domain_pos_offset, row));
 			}
 			if (zipcode_enabled) {
-				data.zipcode = readstr(read32(rowoffset + zipcode_pos_offset));
+				// data.zipcode = readstr(read32(rowoffset + zipcode_pos_offset));
+				data.zipcode = readstr(read32_row(zipcode_pos_offset, row));
 			}
 			if (latitude_enabled) {
-				data.latitude = Math.round(readfloat(rowoffset + latitude_pos_offset) * 1000000, 6) / 1000000;
+				// data.latitude = Math.round(readfloat(rowoffset + latitude_pos_offset) * 1000000, 6) / 1000000;
+				data.latitude = Math.round(readfloat_row(latitude_pos_offset, row) * 1000000, 6) / 1000000;
 			}
 			if (longitude_enabled) {
-				data.longitude = Math.round(readfloat(rowoffset + longitude_pos_offset) * 1000000, 6) / 1000000;
+				// data.longitude = Math.round(readfloat(rowoffset + longitude_pos_offset) * 1000000, 6) / 1000000;
+				data.longitude = Math.round(readfloat_row(longitude_pos_offset, row) * 1000000, 6) / 1000000;
 			}
 			if (timezone_enabled) {
-				data.timezone = readstr(read32(rowoffset + timezone_pos_offset));
+				// data.timezone = readstr(read32(rowoffset + timezone_pos_offset));
+				data.timezone = readstr(read32_row(timezone_pos_offset, row));
 			}
 			if (netspeed_enabled) {
-				data.netspeed = readstr(read32(rowoffset + netspeed_pos_offset));
+				// data.netspeed = readstr(read32(rowoffset + netspeed_pos_offset));
+				data.netspeed = readstr(read32_row(netspeed_pos_offset, row));
 			}
 			if (iddcode_enabled) {
-				data.iddcode = readstr(read32(rowoffset + iddcode_pos_offset));
+				// data.iddcode = readstr(read32(rowoffset + iddcode_pos_offset));
+				data.iddcode = readstr(read32_row(iddcode_pos_offset, row));
 			}
 			if (areacode_enabled) {
-				data.areacode = readstr(read32(rowoffset + areacode_pos_offset));
+				// data.areacode = readstr(read32(rowoffset + areacode_pos_offset));
+				data.areacode = readstr(read32_row(areacode_pos_offset, row));
 			}
 			if (weatherstationcode_enabled) {
-				data.weatherstationcode = readstr(read32(rowoffset + weatherstationcode_pos_offset));
+				// data.weatherstationcode = readstr(read32(rowoffset + weatherstationcode_pos_offset));
+				data.weatherstationcode = readstr(read32_row(weatherstationcode_pos_offset, row));
 			}
 			if (weatherstationname_enabled) {
-				data.weatherstationname = readstr(read32(rowoffset + weatherstationname_pos_offset));
+				// data.weatherstationname = readstr(read32(rowoffset + weatherstationname_pos_offset));
+				data.weatherstationname = readstr(read32_row(weatherstationname_pos_offset, row));
 			}
 			if (mcc_enabled) {
-				data.mcc = readstr(read32(rowoffset + mcc_pos_offset));
+				// data.mcc = readstr(read32(rowoffset + mcc_pos_offset));
+				data.mcc = readstr(read32_row(mcc_pos_offset, row));
 			}
 			if (mnc_enabled) {
-				data.mnc = readstr(read32(rowoffset + mnc_pos_offset));
+				// data.mnc = readstr(read32(rowoffset + mnc_pos_offset));
+				data.mnc = readstr(read32_row(mnc_pos_offset, row));
 			}
 			if (mobilebrand_enabled) {
-				data.mobilebrand = readstr(read32(rowoffset + mobilebrand_pos_offset));
+				// data.mobilebrand = readstr(read32(rowoffset + mobilebrand_pos_offset));
+				data.mobilebrand = readstr(read32_row(mobilebrand_pos_offset, row));
 			}
 			if (elevation_enabled) {
-				data.elevation = readstr(read32(rowoffset + elevation_pos_offset));
+				// data.elevation = readstr(read32(rowoffset + elevation_pos_offset));
+				data.elevation = readstr(read32_row(elevation_pos_offset, row));
 			}
 			if (usagetype_enabled) {
-				data.usagetype = readstr(read32(rowoffset + usagetype_pos_offset));
+				// data.usagetype = readstr(read32(rowoffset + usagetype_pos_offset));
+				data.usagetype = readstr(read32_row(usagetype_pos_offset, row));
 			}
 			data.status = "OK";
 			return;
