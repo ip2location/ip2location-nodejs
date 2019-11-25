@@ -165,7 +165,6 @@ function read32_row(pos, buff) {
 // Read 32 bits float in the database
 function readfloat(pos) {
 	readbytes = 4;
-	return buff.readFloatLE(0);
 	return readbin(readbytes, pos - 1, "float");
 }
 
