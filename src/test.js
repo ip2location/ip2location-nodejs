@@ -16,3 +16,5 @@ for (var x = 0; x < testip.length; x++) {
 	// console.log(result);
 	console.log("--------------------------------------------------------------");
 }
+
+ip2loc.IP2Location_close();

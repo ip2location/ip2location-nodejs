@@ -71,6 +71,7 @@ Below are the methods supported in this module.
 |IP2Location_get_mobilebrand|Returns the mobile brand.|
 |IP2Location_get_elevation|Returns the elevation in meters.|
 |IP2Location_get_usagetype|Returns the usage type.|
+|IP2Location_close|Closes BIN file and resets metadata.|
 
 
 ## Usage
@@ -91,4 +92,5 @@ for (var x = 0; x < testip.length; x++) {
 	console.log("--------------------------------------------------------------");
 }
 
+ip2loc.IP2Location_close();
 ```
