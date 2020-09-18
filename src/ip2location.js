@@ -4,7 +4,7 @@ var bigInt = require("big-integer");
 
 var fd;
 
-var version = "8.3.0";
+var version = "8.4.0";
 var binfile = "";
 var IPv4ColumnSize = 0;
 var IPv6ColumnSize = 0;
@@ -349,6 +349,30 @@ exports.IP2Location_init = function IP2Location_init(binpath) {
 			}
 		}
 	}
+}
+
+exports.IP2Location_close = function IP2Location_close() {
+	binfile = "";
+	try {
+		fs.closeSync(fd);
+	}
+	catch (err) {
+		// do nothing
+	}
+	mydb._DBType = 0;
+	mydb._DBColumn = 0;
+	mydb._DBYear = 0;
+	mydb._DBMonth = 0;
+	mydb._DBDay = 0;
+	mydb._DBCount = 0;
+	mydb._BaseAddr = 0;
+	mydb._DBCountIPv6 = 0;
+	mydb._BaseAddrIPv6 = 0;
+	mydb._OldBIN = 0;
+	mydb._Indexed = 0;
+	mydb._IndexedIPv6 = 0;
+	mydb._IndexBaseAddr = 0;
+	mydb._IndexBaseAddrIPv6 = 0;
 }
 
 function IP2Location_query(myIP, iptype, data) {
