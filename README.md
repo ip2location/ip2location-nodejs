@@ -1,3 +1,6 @@
+[![npm](https://img.shields.io/npm/v/ip2location-nodejs.svg)](http://npm.im/ip2location-nodejs)
+[![npm](https://img.shields.io/npm/dm/ip2location-nodejs.svg)](http://npm.im/ip2location-nodejs)
+
 # IP2Location Node.js Module
 
 This Node.js module provides a fast lookup of country, region, city, latitude, longitude, ZIP code, time zone, ISP, domain name, connection type, IDD code, area code, weather station code, station name, mcc, mnc, mobile brand, elevation, and usage type from IP address by using IP2Location database. This module uses a file based database available at IP2Location.com. This database simply contains IP blocks as keys, and other information such as country, region, city, latitude, longitude, ZIP code, time zone, ISP, domain name, connection type, IDD code, area code, weather station code, station name, mcc, mnc, mobile brand, elevation, and usage type as values. It supports both IP address in IPv4 and IPv6.
