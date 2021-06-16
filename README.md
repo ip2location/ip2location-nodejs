@@ -3,7 +3,7 @@
 
 # IP2Location Node.js Module
 
-This Node.js module provides a fast lookup of country, region, city, latitude, longitude, ZIP code, time zone, ISP, domain name, connection type, IDD code, area code, weather station code, station name, mcc, mnc, mobile brand, elevation, and usage type from IP address by using IP2Location database. This module uses a file based database available at IP2Location.com. This database simply contains IP blocks as keys, and other information such as country, region, city, latitude, longitude, ZIP code, time zone, ISP, domain name, connection type, IDD code, area code, weather station code, station name, mcc, mnc, mobile brand, elevation, and usage type as values. It supports both IP address in IPv4 and IPv6.
+This Node.js module provides a fast lookup of country, region, city, latitude, longitude, ZIP code, time zone, ISP, domain name, connection type, IDD code, area code, weather station code, station name, mcc, mnc, mobile brand, elevation, usage type, address type and IAB category from IP address by using IP2Location database. This module uses a file based database available at IP2Location.com. This database simply contains IP blocks as keys, and other information such as country, region, city, latitude, longitude, ZIP code, time zone, ISP, domain name, connection type, IDD code, area code, weather station code, station name, mcc, mnc, mobile brand, elevation, usage type, address type and IAB category as values. It supports both IP address in IPv4 and IPv6.
 
 This module can be used in many types of projects such as:
 
@@ -74,6 +74,8 @@ Below are the methods supported in this module.
 |IP2Location_get_mobilebrand|Returns the mobile brand.|
 |IP2Location_get_elevation|Returns the elevation in meters.|
 |IP2Location_get_usagetype|Returns the usage type.|
+|IP2Location_get_addresstype|Returns the address type.|
+|IP2Location_get_category|Returns the IAB category.|
 |IP2Location_close|Closes BIN file and resets metadata.|
 
 
@@ -83,7 +85,7 @@ Below are the methods supported in this module.
 
 var ip2loc = require("ip2location-nodejs");
 
-ip2loc.IP2Location_init("./DB24.BIN");
+ip2loc.IP2Location_init("./DB25.BIN");
 
 testip = ['8.8.8.8', '2404:6800:4001:c01::67'];
 
