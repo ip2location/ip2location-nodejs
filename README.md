@@ -15,9 +15,10 @@ This module can be used in many types of projects such as:
  - prevent password sharing and abuse of service 
  - geotargeting in advertisement
 
-The database will be updated in monthly basis for the greater accuracy. Free sample DB1 database is available at /samples directory or download it from https://www.ip2location.com/developers.htm.
+The database will be updated on a monthly basis for greater accuracy.
 
 The complete database is available at https://www.ip2location.com under Premium subscription package.
+The free LITE database is available at https://lite.ip2location.com.
 
 
 ## Installation
