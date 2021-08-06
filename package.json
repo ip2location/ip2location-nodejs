@@ -24,6 +24,6 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/ip2location-nodejs/IP2Location.git"
+		"url": "https://github.com/ip2location/ip2location-nodejs.git"
 	}
 }
