@@ -108,7 +108,7 @@ ip2location.close();
 
 ```
 
-## QUERY USING THE IP2PROXY PROXY DETECTION WEB SERVICE
+## QUERY USING THE IP2LOCATION WEB SERVICE
 
 ## Methods
 Below are the methods supported in this module.
