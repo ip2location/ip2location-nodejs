@@ -1,6 +1,6 @@
 {
 	"name": "ip2location-nodejs",
-	"version": "8.5.0",
+	"version": "9.0.0",
 	"description": "IP2Location geolocation component",
 	"keywords": [
 		"ip2location",
@@ -25,5 +25,8 @@
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/ip2location/ip2location-nodejs.git"
+	},
+	"devDependencies": {
+		"prettier": "2.4.0"
 	}
 }

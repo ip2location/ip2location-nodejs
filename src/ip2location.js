@@ -1,729 +1,1133 @@
 var net = require("net");
 var fs = require("fs");
 var bigInt = require("big-integer");
+var https = require("https");
 
-var fd;
+// For BIN queries
+const VERSION = "9.0.0";
+const MAX_INDEX = 65536;
+const COUNTRY_POSITION = [
+  0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+];
+const REGION_POSITION = [
+  0, 0, 0, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+];
+const CITY_POSITION = [
+  0, 0, 0, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+];
+const ISP_POSITION = [
+  0, 0, 3, 0, 5, 0, 7, 5, 7, 0, 8, 0, 9, 0, 9, 0, 9, 0, 9, 7, 9, 0, 9, 7, 9, 9,
+];
+const LATITUDE_POSITION = [
+  0, 0, 0, 0, 0, 5, 5, 0, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+];
+const LONGITUDE_POSITION = [
+  0, 0, 0, 0, 0, 6, 6, 0, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
+];
+const DOMAIN_POSITION = [
+  0, 0, 0, 0, 0, 0, 0, 6, 8, 0, 9, 0, 10, 0, 10, 0, 10, 0, 10, 8, 10, 0, 10, 8,
+  10, 10,
+];
+const ZIP_CODE_POSITION = [
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 7, 7, 7, 0, 7, 7, 7, 0, 7, 0, 7, 7, 7, 0, 7, 7,
+];
+const TIME_ZONE_POSITION = [
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 8, 7, 8, 8, 8, 7, 8, 0, 8, 8, 8, 0, 8, 8,
+];
+const NET_SPEED_POSITION = [
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 11, 0, 11, 8, 11, 0, 11, 0, 11, 0,
+  11, 11,
+];
+const IDD_CODE_POSITION = [
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 12, 0, 12, 0, 12, 9, 12, 0,
+  12, 12,
+];
+const AREA_CODE_POSITION = [
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 13, 0, 13, 0, 13, 10, 13, 0,
+  13, 13,
+];
+const WEATHER_STATION_CODE_POSITION = [
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 14, 0, 14, 0, 14, 0, 14,
+  14,
+];
+const WEATHER_STATION_NAME_POSITION = [
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 15, 0, 15, 0, 15, 0,
+  15, 15,
+];
+const MCC_POSITION = [
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 16, 0, 16, 9, 16,
+  16,
+];
+const MNC_POSITION = [
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 17, 0, 17, 10,
+  17, 17,
+];
+const MOBILE_BRAND_POSITION = [
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 11, 18, 0, 18, 11,
+  18, 18,
+];
+const ELEVATION_POSITION = [
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 11, 19, 0, 19,
+  19,
+];
+const USAGE_TYPE_POSITION = [
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 12, 20,
+  20,
+];
+const ADDRESS_TYPE_POSITION = [
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 21,
+];
+const CATEGORY_POSITION = [
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 22,
+];
+const MAX_IPV4_RANGE = bigInt(4294967295);
+const MAX_IPV6_RANGE = bigInt("340282366920938463463374607431768211455");
+const FROM_6TO4 = bigInt("42545680458834377588178886921629466624");
+const TO_6TO4 = bigInt("42550872755692912415807417417958686719");
+const FROM_TEREDO = bigInt("42540488161975842760550356425300246528");
+const TO_TEREDO = bigInt("42540488241204005274814694018844196863");
+const LAST_32_BITS = bigInt("4294967295");
 
-var version = "8.5.0";
-var binfile = "";
-var IPv4ColumnSize = 0;
-var IPv6ColumnSize = 0;
-var low = 0;
-var high = 0;
-var mid = 0;
-
-var maxindex = 65536;
-var IndexArrayIPv4 = Array(maxindex);
-var IndexArrayIPv6 = Array(maxindex);
-
-var country_pos = [0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2];
-var region_pos = [0, 0, 0, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3];
-var city_pos = [0, 0, 0, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4];
-var isp_pos = [0, 0, 3, 0, 5, 0, 7, 5, 7, 0, 8, 0, 9, 0, 9, 0, 9, 0, 9, 7, 9, 0, 9, 7, 9, 9];
-var latitude_pos = [0, 0, 0, 0, 0, 5, 5, 0, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5];
-var longitude_pos = [0, 0, 0, 0, 0, 6, 6, 0, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6];
-var domain_pos = [0, 0, 0, 0, 0, 0, 0, 6, 8, 0, 9, 0, 10, 0, 10, 0, 10, 0, 10, 8, 10, 0, 10, 8, 10, 10];
-var zipcode_pos = [0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 7, 7, 7, 0, 7, 7, 7, 0, 7, 0, 7, 7, 7, 0, 7, 7];
-var timezone_pos = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 8, 7, 8, 8, 8, 7, 8, 0, 8, 8, 8, 0, 8, 8];
-var netspeed_pos = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 11, 0, 11, 8, 11, 0, 11, 0, 11, 0, 11, 11];
-var iddcode_pos = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 12, 0, 12, 0, 12, 9, 12, 0, 12, 12];
-var areacode_pos = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 13, 0, 13, 0, 13, 10, 13, 0, 13, 13];
-var weatherstationcode_pos = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 14, 0, 14, 0, 14, 0, 14, 14];
-var weatherstationname_pos = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 15, 0, 15, 0, 15, 0, 15, 15];
-var mcc_pos = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 16, 0, 16, 9, 16, 16];
-var mnc_pos = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 17, 0, 17, 10, 17, 17];
-var mobilebrand_pos = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 11, 18, 0, 18, 11, 18, 18];
-var elevation_pos = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 11, 19, 0, 19, 19];
-var usagetype_pos = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 12, 20, 20];
-var addresstype_pos = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 21];
-var category_pos = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 22];
-
-var country_pos_offset = 0;
-var region_pos_offset = 0;
-var city_pos_offset = 0;
-var isp_pos_offset = 0;
-var domain_pos_offset = 0;
-var zipcode_pos_offset = 0;
-var latitude_pos_offset = 0;
-var longitude_pos_offset = 0;
-var timezone_pos_offset = 0;
-var netspeed_pos_offset = 0;
-var iddcode_pos_offset = 0;
-var areacode_pos_offset = 0;
-var weatherstationcode_pos_offset = 0;
-var weatherstationname_pos_offset = 0;
-var mcc_pos_offset = 0;
-var mnc_pos_offset = 0;
-var mobilebrand_pos_offset = 0;
-var elevation_pos_offset = 0;
-var usagetype_pos_offset = 0;
-var addresstype_pos_offset = 0;
-var category_pos_offset = 0;
-
-var country_enabled = 0;
-var region_enabled = 0;
-var city_enabled = 0;
-var isp_enabled = 0;
-var domain_enabled = 0;
-var zipcode_enabled = 0;
-var latitude_enabled = 0;
-var longitude_enabled = 0;
-var timezone_enabled = 0;
-var netspeed_enabled = 0;
-var iddcode_enabled = 0;
-var areacode_enabled = 0;
-var weatherstationcode_enabled = 0;
-var weatherstationname_enabled = 0;
-var mcc_enabled = 0;
-var mnc_enabled = 0;
-var mobilebrand_enabled = 0;
-var elevation_enabled = 0;
-var usagetype_enabled = 0;
-var addresstype_enabled = 0;
-var category_enabled = 0;
-
-var MAX_IPV4_RANGE = bigInt(4294967295);
-var MAX_IPV6_RANGE = bigInt("340282366920938463463374607431768211455");
-var FROM_6TO4 = bigInt("42545680458834377588178886921629466624");
-var TO_6TO4 = bigInt("42550872755692912415807417417958686719");
-var FROM_TEREDO = bigInt("42540488161975842760550356425300246528");
-var TO_TEREDO = bigInt("42540488241204005274814694018844196863");
-var LAST_32BITS = bigInt("4294967295");
-
-var mydb = {
-	"_DBType": 0,
-	"_DBColumn": 0,
-	"_DBYear": 0,
-	"_DBMonth": 0,
-	"_DBDay": 0,
-	"_DBCount": 0,
-	"_BaseAddr": 0,
-	"_DBCountIPv6": 0,
-	"_BaseAddrIPv6": 0,
-	"_OldBIN": 0,
-	"_Indexed": 0,
-	"_IndexedIPv6": 0,
-	"_IndexBaseAddr": 0,
-	"_IndexBaseAddrIPv6": 0,
-	"_ProductCode": 0,
-	"_ProductType": 0,
-	"_FileSize": 0
+const MODES = {
+  COUNTRY_SHORT: 1,
+  COUNTRY_LONG: 2,
+  REGION: 3,
+  CITY: 4,
+  ISP: 5,
+  LATITUDE: 6,
+  LONGITUDE: 7,
+  DOMAIN: 8,
+  ZIP_CODE: 9,
+  TIME_ZONE: 10,
+  NET_SPEED: 11,
+  IDD_CODE: 12,
+  AREA_CODE: 13,
+  WEATHER_STATION_CODE: 14,
+  WEATHER_STATION_NAME: 15,
+  MCC: 16,
+  MNC: 17,
+  MOBILE_BRAND: 18,
+  ELEVATION: 19,
+  USAGE_TYPE: 20,
+  ADDRESS_TYPE: 21,
+  CATEGORY: 22,
+  ALL: 100,
 };
+const MSG_NOT_SUPPORTED =
+  "This method is not applicable for current IP2Location binary data file. Please upgrade your subscription package to install new data file.";
+const MSG_INVALID_IP = "INVALID_IP_ADDRESS";
+const MSG_MISSING_FILE = "MISSING_FILE";
+const MSG_IPV6_UNSUPPORTED = "IPV6_NOT_SUPPORTED";
+const MSG_INVALID_BIN =
+  "Incorrect IP2Location BIN file format. Please make sure that you are using the latest IP2Location BIN file.";
+const REGEX_TEXT_FIELD = /^(ip|ipno)$/i;
+const REGEX_IPV4_1_MATCH = /^[:0]+:F{4}:(\d+\.){3}\d+$/i;
+const REGEX_IPV4_1_REPLACE = /^[:0]+:F{4}:/i;
+const REGEX_IPV4_2_MATCH = /^[:0]+:(\d+\.){3}\d+$/i;
+const REGEX_IPV4_2_REPLACE = /^[:0]+:/i;
 
-// Read row data
-function readrow(readbytes, pos) {
-	var buff = new Buffer.alloc(readbytes);
-	totalread = fs.readSync(fd, buff, 0, readbytes, pos - 1);
-	return buff;
+// For API queries
+const REGEX_API_KEY = /^[\dA-Z]{10}$/;
+const REGEX_API_PACKAGE = /^WS\d+$/;
+const BASE_URL = "api.ip2location.com/v2/";
+const MSG_INVALID_API_KEY = "Invalid API key.";
+const MSG_INVALID_API_PACKAGE = "Invalid package name.";
+
+// BIN query class
+class IP2Location {
+  #binFile = "";
+  #indexArrayIPV4 = Array(MAX_INDEX);
+  #indexArrayIPV6 = Array(MAX_INDEX);
+  #ipV4ColumnSize = 0;
+  #ipV6ColumnSize = 0;
+
+  #countryPositionOffset = 0;
+  #regionPositionOffset = 0;
+  #cityPositionOffset = 0;
+  #ispPositionOffset = 0;
+  #domainPositionOffset = 0;
+  #zipCodePositionOffset = 0;
+  #latitudePositionOffset = 0;
+  #longitudePositionOffset = 0;
+  #timeZonePositionOffset = 0;
+  #netSpeedPositionOffset = 0;
+  #iddCodePositionOffset = 0;
+  #areaCodePositionOffset = 0;
+  #weatherStationCodePositionOffset = 0;
+  #weatherStationNamePositionOffset = 0;
+  #mccPositionOffset = 0;
+  #mncPositionOffset = 0;
+  #mobileBrandPositionOffset = 0;
+  #elevationPositionOffset = 0;
+  #usageTypePositionOffset = 0;
+  #addressTypePositionOffset = 0;
+  #categoryPositionOffset = 0;
+
+  #countryEnabled = 0;
+  #regionEnabled = 0;
+  #cityEnabled = 0;
+  #ispEnabled = 0;
+  #domainEnabled = 0;
+  #zipCodeEnabled = 0;
+  #latitudeEnabled = 0;
+  #longitudeEnabled = 0;
+  #timeZoneEnabled = 0;
+  #netSpeedEnabled = 0;
+  #iddCodeEnabled = 0;
+  #areaCodeEnabled = 0;
+  #weatherStationCodeEnabled = 0;
+  #weatherStationNameEnabled = 0;
+  #mccEnabled = 0;
+  #mncEnabled = 0;
+  #mobileBrandEnabled = 0;
+  #elevationEnabled = 0;
+  #usageTypeEnabled = 0;
+  #addressTypeEnabled = 0;
+  #categoryEnabled = 0;
+
+  #myDB = {
+    dbType: 0,
+    dbColumn: 0,
+    dbYear: 0,
+    dbMonth: 0,
+    dbDay: 0,
+    dbCount: 0,
+    baseAddress: 0,
+    dbCountIPV6: 0,
+    baseAddressIPV6: 0,
+    indexed: 0,
+    indexedIPV6: 0,
+    indexBaseAddress: 0,
+    indexBaseAddressIPV6: 0,
+    productCode: 0,
+    productType: 0,
+    fileSize: 0,
+  };
+  #fd;
+
+  constructor() {}
+
+  // Read row data
+  readRow(readBytes, position) {
+    let buffer = new Buffer.alloc(readBytes);
+    let totalRead = fs.readSync(this.#fd, buffer, 0, readBytes, position - 1);
+    return buffer;
+  }
+
+  // Read binary data
+  readBin(readBytes, position, readType, isBigInt) {
+    let buffer = new Buffer.alloc(readBytes);
+    let totalRead = fs.readSync(this.#fd, buffer, 0, readBytes, position);
+
+    if (totalRead == readBytes) {
+      switch (readType) {
+        case "int8":
+          return buffer.readUInt8(0);
+          break;
+        case "int32":
+          return buffer.readInt32LE(0);
+          break;
+        case "uint32":
+          return isBigInt
+            ? bigInt(buffer.readUInt32LE(0))
+            : buffer.readUInt32LE(0);
+          break;
+        case "float":
+          return buffer.readFloatLE(0);
+          break;
+        case "str":
+          return buffer.toString("utf8");
+          break;
+        case "int128":
+          let myBig = bigInt(); // zero
+          let bitShift = 8;
+          for (let x = 0; x < 16; x++) {
+            myBig = myBig.add(
+              bigInt(buffer.readUInt8(x)).shiftLeft(bitShift * x)
+            );
+          }
+          return myBig;
+          break;
+      }
+    } else {
+      return 0;
+    }
+  }
+
+  // Read 8 bits integer in the database
+  read8(position) {
+    let readBytes = 1;
+    return this.readBin(readBytes, position - 1, "int8");
+  }
+
+  // Read 32 bits integer in the database
+  read32(position, isBigInt) {
+    let readBytes = 4;
+    return this.readBin(readBytes, position - 1, "uint32", isBigInt);
+  }
+
+  // Read 32 bits integer in the buffer
+  read32Row(position, buffer) {
+    return buffer.readUInt32LE(position);
+  }
+
+  read32Or128(position, ipType) {
+    if (ipType == 4) {
+      return this.read32(position, true);
+    } else if (ipType == 6) {
+      return this.read128(position);
+    } else {
+      return 0;
+    }
+  }
+
+  // Read 128 bits integer in the database
+  read128(position) {
+    let readBytes = 16;
+    return this.readBin(readBytes, position - 1, "int128");
+  }
+
+  // Read 32 bits float in the buffer
+  readFloatRow(position, buffer) {
+    return buffer.readFloatLE(position);
+  }
+
+  // Read strings in the database
+  readStr(position) {
+    let readBytes = 1;
+    return this.readBin(
+      this.readBin(readBytes, position, "int8"),
+      position + 1,
+      "str"
+    );
+  }
+
+  // Read metadata and indexes
+  loadBin() {
+    let loadOK = false;
+
+    try {
+      if (this.#binFile && this.#binFile != "") {
+        this.#fd = fs.openSync(this.#binFile, "r");
+
+        this.#myDB.dbType = this.read8(1);
+        this.#myDB.dbColumn = this.read8(2);
+        this.#myDB.dbYear = this.read8(3);
+        this.#myDB.dbMonth = this.read8(4);
+        this.#myDB.dbDay = this.read8(5);
+        this.#myDB.dbCount = this.read32(6);
+        this.#myDB.baseAddress = this.read32(10);
+        this.#myDB.dbCountIPV6 = this.read32(14);
+        this.#myDB.baseAddressIPV6 = this.read32(18);
+        this.#myDB.indexBaseAddress = this.read32(22);
+        this.#myDB.indexBaseAddressIPV6 = this.read32(26);
+        this.#myDB.productCode = this.read8(30);
+        // below 2 fields just read for now, not being used yet
+        this.#myDB.productType = this.read8(31);
+        this.#myDB.fileSize = this.read32(32);
+
+        // check if is correct BIN (should be 1 for IP2Location BIN file), also checking for zipped file (PK being the first 2 chars)
+        if (
+          (this.#myDB.productCode != 1 && this.#myDB.dbYear >= 21) ||
+          (this.#myDB.dbType == 80 && this.#myDB.dbColumn == 75)
+        ) {
+          // only BINs from Jan 2021 onwards have this byte set
+          throw new Error(MSG_INVALID_BIN);
+        }
+        if (this.#myDB.indexBaseAddress > 0) {
+          this.#myDB.indexed = 1;
+        }
+
+        if (this.#myDB.dbCountIPV6 > 0 && this.#myDB.indexBaseAddressIPV6 > 0) {
+          this.#myDB.indexedIPV6 = 1;
+        }
+
+        this.#ipV4ColumnSize = this.#myDB.dbColumn << 2; // 4 bytes each column
+        this.#ipV6ColumnSize = 16 + ((this.#myDB.dbColumn - 1) << 2); // 4 bytes each column, except IPFrom column which is 16 bytes
+
+        let dbt = this.#myDB.dbType;
+
+        this.#countryPositionOffset =
+          COUNTRY_POSITION[dbt] != 0 ? (COUNTRY_POSITION[dbt] - 2) << 2 : 0;
+        this.#regionPositionOffset =
+          REGION_POSITION[dbt] != 0 ? (REGION_POSITION[dbt] - 2) << 2 : 0;
+        this.#cityPositionOffset =
+          CITY_POSITION[dbt] != 0 ? (CITY_POSITION[dbt] - 2) << 2 : 0;
+        this.#ispPositionOffset =
+          ISP_POSITION[dbt] != 0 ? (ISP_POSITION[dbt] - 2) << 2 : 0;
+        this.#domainPositionOffset =
+          DOMAIN_POSITION[dbt] != 0 ? (DOMAIN_POSITION[dbt] - 2) << 2 : 0;
+        this.#zipCodePositionOffset =
+          ZIP_CODE_POSITION[dbt] != 0 ? (ZIP_CODE_POSITION[dbt] - 2) << 2 : 0;
+        this.#latitudePositionOffset =
+          LATITUDE_POSITION[dbt] != 0 ? (LATITUDE_POSITION[dbt] - 2) << 2 : 0;
+        this.#longitudePositionOffset =
+          LONGITUDE_POSITION[dbt] != 0 ? (LONGITUDE_POSITION[dbt] - 2) << 2 : 0;
+        this.#timeZonePositionOffset =
+          TIME_ZONE_POSITION[dbt] != 0 ? (TIME_ZONE_POSITION[dbt] - 2) << 2 : 0;
+        this.#netSpeedPositionOffset =
+          NET_SPEED_POSITION[dbt] != 0 ? (NET_SPEED_POSITION[dbt] - 2) << 2 : 0;
+        this.#iddCodePositionOffset =
+          IDD_CODE_POSITION[dbt] != 0 ? (IDD_CODE_POSITION[dbt] - 2) << 2 : 0;
+        this.#areaCodePositionOffset =
+          AREA_CODE_POSITION[dbt] != 0 ? (AREA_CODE_POSITION[dbt] - 2) << 2 : 0;
+        this.#weatherStationCodePositionOffset =
+          WEATHER_STATION_CODE_POSITION[dbt] != 0
+            ? (WEATHER_STATION_CODE_POSITION[dbt] - 2) << 2
+            : 0;
+        this.#weatherStationNamePositionOffset =
+          WEATHER_STATION_NAME_POSITION[dbt] != 0
+            ? (WEATHER_STATION_NAME_POSITION[dbt] - 2) << 2
+            : 0;
+        this.#mccPositionOffset =
+          MCC_POSITION[dbt] != 0 ? (MCC_POSITION[dbt] - 2) << 2 : 0;
+        this.#mncPositionOffset =
+          MNC_POSITION[dbt] != 0 ? (MNC_POSITION[dbt] - 2) << 2 : 0;
+        this.#mobileBrandPositionOffset =
+          MOBILE_BRAND_POSITION[dbt] != 0
+            ? (MOBILE_BRAND_POSITION[dbt] - 2) << 2
+            : 0;
+        this.#elevationPositionOffset =
+          ELEVATION_POSITION[dbt] != 0 ? (ELEVATION_POSITION[dbt] - 2) << 2 : 0;
+        this.#usageTypePositionOffset =
+          USAGE_TYPE_POSITION[dbt] != 0
+            ? (USAGE_TYPE_POSITION[dbt] - 2) << 2
+            : 0;
+        this.#addressTypePositionOffset =
+          ADDRESS_TYPE_POSITION[dbt] != 0
+            ? (ADDRESS_TYPE_POSITION[dbt] - 2) << 2
+            : 0;
+        this.#categoryPositionOffset =
+          CATEGORY_POSITION[dbt] != 0 ? (CATEGORY_POSITION[dbt] - 2) << 2 : 0;
+
+        this.#countryEnabled = COUNTRY_POSITION[dbt] != 0 ? 1 : 0;
+        this.#regionEnabled = REGION_POSITION[dbt] != 0 ? 1 : 0;
+        this.#cityEnabled = CITY_POSITION[dbt] != 0 ? 1 : 0;
+        this.#ispEnabled = ISP_POSITION[dbt] != 0 ? 1 : 0;
+        this.#latitudeEnabled = LATITUDE_POSITION[dbt] != 0 ? 1 : 0;
+        this.#longitudeEnabled = LONGITUDE_POSITION[dbt] != 0 ? 1 : 0;
+        this.#domainEnabled = DOMAIN_POSITION[dbt] != 0 ? 1 : 0;
+        this.#zipCodeEnabled = ZIP_CODE_POSITION[dbt] != 0 ? 1 : 0;
+        this.#timeZoneEnabled = TIME_ZONE_POSITION[dbt] != 0 ? 1 : 0;
+        this.#netSpeedEnabled = NET_SPEED_POSITION[dbt] != 0 ? 1 : 0;
+        this.#iddCodeEnabled = IDD_CODE_POSITION[dbt] != 0 ? 1 : 0;
+        this.#areaCodeEnabled = AREA_CODE_POSITION[dbt] != 0 ? 1 : 0;
+        this.#weatherStationCodeEnabled =
+          WEATHER_STATION_CODE_POSITION[dbt] != 0 ? 1 : 0;
+        this.#weatherStationNameEnabled =
+          WEATHER_STATION_NAME_POSITION[dbt] != 0 ? 1 : 0;
+        this.#mccEnabled = MCC_POSITION[dbt] != 0 ? 1 : 0;
+        this.#mncEnabled = MNC_POSITION[dbt] != 0 ? 1 : 0;
+        this.#mobileBrandEnabled = MOBILE_BRAND_POSITION[dbt] != 0 ? 1 : 0;
+        this.#elevationEnabled = ELEVATION_POSITION[dbt] != 0 ? 1 : 0;
+        this.#usageTypeEnabled = USAGE_TYPE_POSITION[dbt] != 0 ? 1 : 0;
+        this.#addressTypeEnabled = ADDRESS_TYPE_POSITION[dbt] != 0 ? 1 : 0;
+        this.#categoryEnabled = CATEGORY_POSITION[dbt] != 0 ? 1 : 0;
+
+        if (this.#myDB.indexed == 1) {
+          let pointer = this.#myDB.indexBaseAddress;
+
+          for (let x = 0; x < MAX_INDEX; x++) {
+            this.#indexArrayIPV4[x] = Array(2);
+            this.#indexArrayIPV4[x][0] = this.read32(pointer);
+            this.#indexArrayIPV4[x][1] = this.read32(pointer + 4);
+            pointer += 8;
+          }
+
+          if (this.#myDB.indexBaseAddressIPV6 > 0) {
+            for (let x = 0; x < MAX_INDEX; x++) {
+              this.#indexArrayIPV6[x] = Array(2);
+              this.#indexArrayIPV6[x][0] = this.read32(pointer);
+              this.#indexArrayIPV6[x][1] = this.read32(pointer + 4);
+              pointer += 8;
+            }
+          }
+        }
+        loadOK = true;
+      }
+    } catch (err) {
+      // do nothing for now
+    }
+    return loadOK;
+  }
+
+  // Initialize the module with the path to the IP2Location BIN file
+  open(binPath) {
+    if (this.#myDB.dbType == 0) {
+      this.#binFile = binPath;
+      this.loadBin();
+    }
+  }
+
+  // Reset everything
+  close() {
+    try {
+      this.#myDB.baseAddress = 0;
+      this.#myDB.dbCount = 0;
+      this.#myDB.dbColumn = 0;
+      this.#myDB.dbType = 0;
+      this.#myDB.dbDay = 0;
+      this.#myDB.dbMonth = 0;
+      this.#myDB.dbYear = 0;
+      this.#myDB.baseAddressIPV6 = 0;
+      this.#myDB.dbCountIPV6 = 0;
+      this.#myDB.indexed = 0;
+      this.$myDB.indexedIPV6 = 0;
+      this.#myDB.indexBaseAddress = 0;
+      this.#myDB.indexBaseAddressIPV6 = 0;
+      this.#myDB.productCode = 0;
+      this.#myDB.productType = 0;
+      this.#myDB.fileSize = 0;
+      fs.closeSync(this.#fd);
+      return 0;
+    } catch (err) {
+      return -1;
+    }
+  }
+
+  // Search BIN for the data
+  geoQueryData(myIP, ipType, data, mode) {
+    let MAX_IP_RANGE;
+    let low;
+    let mid;
+    let high;
+    let countryPosition;
+    let baseAddress;
+    let columnSize;
+    let ipNumber;
+    let indexAddress;
+    let rowOffset;
+    let rowOffset2;
+    let ipFrom;
+    let ipTo;
+    let firstCol;
+    let row;
+
+    if (ipType == 4) {
+      MAX_IP_RANGE = MAX_IPV4_RANGE;
+      high = this.#myDB.dbCount;
+      baseAddress = this.#myDB.baseAddress;
+      columnSize = this.#ipV4ColumnSize;
+      ipNumber = dot2Num(myIP);
+
+      indexAddress = ipNumber >>> 16;
+      low = this.#indexArrayIPV4[indexAddress][0];
+      high = this.#indexArrayIPV4[indexAddress][1];
+    } else if (ipType == 6) {
+      MAX_IP_RANGE = MAX_IPV6_RANGE;
+      high = this.#myDB.dbCountIPV6;
+      baseAddress = this.#myDB.baseAddressIPV6;
+      columnSize = this.#ipV6ColumnSize;
+      ipNumber = ip2No(myIP);
+
+      if (
+        (ipNumber.geq(FROM_6TO4) && ipNumber.leq(TO_6TO4)) ||
+        (ipNumber.geq(FROM_TEREDO) && ipNumber.leq(TO_TEREDO))
+      ) {
+        ipType = 4;
+        MAX_IP_RANGE = MAX_IPV4_RANGE;
+        high = this.#myDB.dbCount;
+        baseAddress = this.#myDB.baseAddress;
+        columnSize = this.#ipV4ColumnSize;
+
+        if (ipNumber.geq(FROM_6TO4) && ipNumber.leq(TO_6TO4)) {
+          ipNumber = ipNumber.shiftRight(80).and(LAST_32_BITS).toJSNumber();
+        } else {
+          ipNumber = ipNumber.not().and(LAST_32_BITS).toJSNumber();
+        }
+        indexAddress = ipNumber >>> 16;
+        low = this.#indexArrayIPV4[indexAddress][0];
+        high = this.#indexArrayIPV4[indexAddress][1];
+      } else {
+        indexAddress = ipNumber.shiftRight(112).toJSNumber();
+        low = this.#indexArrayIPV6[indexAddress][0];
+        high = this.#indexArrayIPV6[indexAddress][1];
+      }
+    }
+
+    data.ip = myIP;
+    ipNumber = bigInt(ipNumber);
+
+    if (ipNumber.geq(MAX_IP_RANGE)) {
+      ipNumber = MAX_IP_RANGE.minus(1);
+    }
+
+    data.ipNo = ipNumber.toString();
+
+    while (low <= high) {
+      mid = parseInt((low + high) / 2);
+      rowOffset = baseAddress + mid * columnSize;
+      rowOffset2 = rowOffset + columnSize;
+
+      ipFrom = this.read32Or128(rowOffset, ipType);
+      ipTo = this.read32Or128(rowOffset2, ipType);
+
+      ipFrom = bigInt(ipFrom);
+      ipTo = bigInt(ipTo);
+
+      if (ipFrom.leq(ipNumber) && ipTo.gt(ipNumber)) {
+        loadMesg(data, MSG_NOT_SUPPORTED); // load default message
+
+        firstCol = 4;
+        if (ipType == 6) {
+          firstCol = 16;
+        }
+
+        row = this.readRow(columnSize - firstCol, rowOffset + firstCol);
+
+        if (this.#countryEnabled) {
+          if (
+            mode == MODES.ALL ||
+            mode == MODES.COUNTRY_SHORT ||
+            mode == MODES.COUNTRY_LONG
+          ) {
+            countryPosition = this.read32Row(this.#countryPositionOffset, row);
+          }
+          if (mode == MODES.ALL || mode == MODES.COUNTRY_SHORT) {
+            data.countryShort = this.readStr(countryPosition);
+          }
+          if (mode == MODES.ALL || mode == MODES.COUNTRY_LONG) {
+            data.countryLong = this.readStr(countryPosition + 3);
+          }
+        }
+
+        if (this.#regionEnabled) {
+          if (mode == MODES.ALL || mode == MODES.REGION) {
+            data.region = this.readStr(
+              this.read32Row(this.#regionPositionOffset, row)
+            );
+          }
+        }
+
+        if (this.#cityEnabled) {
+          if (mode == MODES.ALL || mode == MODES.CITY) {
+            data.city = this.readStr(
+              this.read32Row(this.#cityPositionOffset, row)
+            );
+          }
+        }
+        if (this.#ispEnabled) {
+          if (mode == MODES.ALL || mode == MODES.ISP) {
+            data.isp = this.readStr(
+              this.read32Row(this.#ispPositionOffset, row)
+            );
+          }
+        }
+        if (this.#domainEnabled) {
+          if (mode == MODES.ALL || mode == MODES.DOMAIN) {
+            data.domain = this.readStr(
+              this.read32Row(this.#domainPositionOffset, row)
+            );
+          }
+        }
+        if (this.#zipCodeEnabled) {
+          if (mode == MODES.ALL || mode == MODES.ZIP_CODE) {
+            data.zipCode = this.readStr(
+              this.read32Row(this.#zipCodePositionOffset, row)
+            );
+          }
+        }
+        if (this.#latitudeEnabled) {
+          if (mode == MODES.ALL || mode == MODES.LATITUDE) {
+            data.latitude =
+              Math.round(
+                this.readFloatRow(this.#latitudePositionOffset, row) * 1000000,
+                6
+              ) / 1000000;
+          }
+        }
+        if (this.#longitudeEnabled) {
+          if (mode == MODES.ALL || mode == MODES.LONGITUDE) {
+            data.longitude =
+              Math.round(
+                this.readFloatRow(this.#longitudePositionOffset, row) * 1000000,
+                6
+              ) / 1000000;
+          }
+        }
+        if (this.#timeZoneEnabled) {
+          if (mode == MODES.ALL || mode == MODES.TIME_ZONE) {
+            data.timeZone = this.readStr(
+              this.read32Row(this.#timeZonePositionOffset, row)
+            );
+          }
+        }
+        if (this.#netSpeedEnabled) {
+          if (mode == MODES.ALL || mode == MODES.NET_SPEED) {
+            data.netSpeed = this.readStr(
+              this.read32Row(this.#netSpeedPositionOffset, row)
+            );
+          }
+        }
+        if (this.#iddCodeEnabled) {
+          if (mode == MODES.ALL || mode == MODES.IDD_CODE) {
+            data.iddCode = this.readStr(
+              this.read32Row(this.#iddCodePositionOffset, row)
+            );
+          }
+        }
+        if (this.#areaCodeEnabled) {
+          if (mode == MODES.ALL || mode == MODES.AREA_CODE) {
+            data.areaCode = this.readStr(
+              this.read32Row(this.#areaCodePositionOffset, row)
+            );
+          }
+        }
+        if (this.#weatherStationCodeEnabled) {
+          if (mode == MODES.ALL || mode == MODES.WEATHER_STATION_CODE) {
+            data.weatherStationCode = this.readStr(
+              this.read32Row(this.#weatherStationCodePositionOffset, row)
+            );
+          }
+        }
+        if (this.#weatherStationNameEnabled) {
+          if (mode == MODES.ALL || mode == MODES.WEATHER_STATION_NAME) {
+            data.weatherStationName = this.readStr(
+              this.read32Row(this.#weatherStationNamePositionOffset, row)
+            );
+          }
+        }
+        if (this.#mccEnabled) {
+          if (mode == MODES.ALL || mode == MODES.MCC) {
+            data.mcc = this.readStr(
+              this.read32Row(this.#mccPositionOffset, row)
+            );
+          }
+        }
+        if (this.#mncEnabled) {
+          if (mode == MODES.ALL || mode == MODES.MNC) {
+            data.mnc = this.readStr(
+              this.read32Row(this.#mncPositionOffset, row)
+            );
+          }
+        }
+        if (this.#mobileBrandEnabled) {
+          if (mode == MODES.ALL || mode == MODES.MOBILE_BRAND) {
+            data.mobileBrand = this.readStr(
+              this.read32Row(this.#mobileBrandPositionOffset, row)
+            );
+          }
+        }
+        if (this.#elevationEnabled) {
+          if (mode == MODES.ALL || mode == MODES.ELEVATION) {
+            data.elevation = this.readStr(
+              this.read32Row(this.#elevationPositionOffset, row)
+            );
+          }
+        }
+        if (this.#usageTypeEnabled) {
+          if (mode == MODES.ALL || mode == MODES.USAGE_TYPE) {
+            data.usageType = this.readStr(
+              this.read32Row(this.#usageTypePositionOffset, row)
+            );
+          }
+        }
+        if (this.#addressTypeEnabled) {
+          if (mode == MODES.ALL || mode == MODES.ADDRESS_TYPE) {
+            data.addressType = this.readStr(
+              this.read32Row(this.#addressTypePositionOffset, row)
+            );
+          }
+        }
+        if (this.#categoryEnabled) {
+          if (mode == MODES.ALL || mode == MODES.CATEGORY) {
+            data.category = this.readStr(
+              this.read32Row(this.#categoryPositionOffset, row)
+            );
+          }
+        }
+        return;
+      } else {
+        if (ipFrom.gt(ipNumber)) {
+          high = mid - 1;
+        } else {
+          low = mid + 1;
+        }
+      }
+    }
+    loadMesg(data, MSG_INVALID_IP);
+  }
+
+  // Query IP for geolocation info
+  geoQuery(myIP, mode) {
+    let data = {
+      ip: "?",
+      ipNo: "?",
+      countryShort: "?",
+      countryLong: "?",
+      region: "?",
+      city: "?",
+      isp: "?",
+      domain: "?",
+      zipCode: "?",
+      latitude: "?",
+      longitude: "?",
+      timeZone: "?",
+      netSpeed: "?",
+      iddCode: "?",
+      areaCode: "?",
+      weatherStationCode: "?",
+      weatherStationName: "?",
+      mcc: "?",
+      mnc: "?",
+      mobileBrand: "?",
+      elevation: "?",
+      usageType: "?",
+      addressType: "?",
+      category: "?",
+    };
+
+    if (REGEX_IPV4_1_MATCH.test(myIP)) {
+      myIP = myIP.replace(REGEX_IPV4_1_REPLACE, "");
+    } else if (REGEX_IPV4_2_MATCH.test(myIP)) {
+      myIP = myIP.replace(REGEX_IPV4_2_REPLACE, "");
+    }
+
+    let ipType = net.isIP(myIP);
+
+    if (ipType == 0) {
+      loadMesg(data, MSG_INVALID_IP);
+      return data;
+    } else if (
+      !this.#binFile ||
+      this.#binFile == "" ||
+      !fs.existsSync(this.#binFile)
+    ) {
+      loadMesg(data, MSG_MISSING_FILE);
+      return data;
+    } else if (this.#myDB.dbType == 0) {
+      loadMesg(data, MSG_MISSING_FILE);
+      return data;
+    } else if (ipType == 6 && this.#myDB.dbCountIPV6 == 0) {
+      loadMesg(data, MSG_IPV6_UNSUPPORTED);
+      return data;
+    } else {
+      this.geoQueryData(myIP, ipType, data, mode);
+      return data;
+    }
+  }
+
+  // Return the API version
+  getAPIVersion() {
+    return VERSION;
+  }
+
+  // Return the package version
+  getPackageVersion() {
+    return this.#myDB.dbType;
+  }
+
+  // Return the IP database version
+  getDatabaseVersion() {
+    return (
+      "20" +
+      this.#myDB.dbYear +
+      "." +
+      this.#myDB.dbMonth +
+      "." +
+      this.#myDB.dbDay
+    );
+  }
+
+  // Return a string for the country code
+  getCountryShort(myIP) {
+    let data = this.geoQuery(myIP, MODES.COUNTRY_SHORT);
+    return data.countryShort;
+  }
+
+  // Return a string for the country name
+  getCountryLong(myIP) {
+    let data = this.geoQuery(myIP, MODES.COUNTRY_LONG);
+    return data.countryLong;
+  }
+
+  // Return a string for the region name
+  getRegion(myIP) {
+    let data = this.geoQuery(myIP, MODES.REGION);
+    return data.region;
+  }
+
+  // Return a string for the city name
+  getCity(myIP) {
+    let data = this.geoQuery(myIP, MODES.CITY);
+    return data.city;
+  }
+
+  // Return a string for the ISP name
+  getISP(myIP) {
+    let data = this.geoQuery(myIP, MODES.ISP);
+    return data.isp;
+  }
+
+  // Return a float for the latitude
+  getLatitude(myIP) {
+    let data = this.geoQuery(myIP, MODES.LATITUDE);
+    return data.latitude;
+  }
+
+  // Return a float for the longitude
+  getLongitude(myIP) {
+    let data = this.geoQuery(myIP, MODES.LONGITUDE);
+    return data.longitude;
+  }
+
+  // Return a string for the domain
+  getDomain(myIP) {
+    let data = this.geoQuery(myIP, MODES.DOMAIN);
+    return data.domain;
+  }
+
+  // Return a string for the ZIP code
+  getZIPCode(myIP) {
+    let data = this.geoQuery(myIP, MODES.ZIP_CODE);
+    return data.zipCode;
+  }
+
+  // Return a string for the time zone
+  getTimeZone(myIP) {
+    let data = this.geoQuery(myIP, MODES.TIME_ZONE);
+    return data.timeZone;
+  }
+
+  // Return a string for the net speed
+  getNetSpeed(myIP) {
+    let data = this.geoQuery(myIP, MODES.NET_SPEED);
+    return data.netSpeed;
+  }
+
+  // Return a string for the IDD code
+  getIDDCode(myIP) {
+    let data = this.geoQuery(myIP, MODES.IDD_CODE);
+    return data.iddCode;
+  }
+
+  // Return a string for the area code
+  getAreaCode(myIP) {
+    let data = this.geoQuery(myIP, MODES.AREA_CODE);
+    return data.areaCode;
+  }
+
+  // Return a string for the weather station code
+  getWeatherStationCode(myIP) {
+    let data = this.geoQuery(myIP, MODES.WEATHER_STATION_CODE);
+    return data.weatherStationCode;
+  }
+
+  // Return a string for the weather station name
+  getWeatherStationName(myIP) {
+    let data = this.geoQuery(myIP, MODES.WEATHER_STATION_NAME);
+    return data.weatherStationName;
+  }
+
+  // Return a string for the MCC
+  getMCC(myIP) {
+    let data = this.geoQuery(myIP, MODES.MCC);
+    return data.mcc;
+  }
+
+  // Return a string for the MNC
+  getMNC(myIP) {
+    let data = this.geoQuery(myIP, MODES.MNC);
+    return data.mnc;
+  }
+
+  // Return a string for the mobile brand
+  getMobileBrand(myIP) {
+    let data = this.geoQuery(myIP, MODES.MOBILE_BRAND);
+    return data.mobileBrand;
+  }
+
+  // Return a string for the elevation
+  getElevation(myIP) {
+    let data = this.geoQuery(myIP, MODES.ELEVATION);
+    return data.elevation;
+  }
+
+  // Return a string for the usage type
+  getUsageType(myIP) {
+    let data = this.geoQuery(myIP, MODES.USAGE_TYPE);
+    return data.usageType;
+  }
+
+  // Return a string for the address type
+  getAddressType(myIP) {
+    let data = this.geoQuery(myIP, MODES.ADDRESS_TYPE);
+    return data.addressType;
+  }
+
+  // Return a string for the category
+  getCategory(myIP) {
+    let data = this.geoQuery(myIP, MODES.CATEGORY);
+    return data.category;
+  }
+
+  // Return all results
+  getAll(myIP) {
+    let data = this.geoQuery(myIP, MODES.ALL);
+    return data;
+  }
 }
 
-// Read binary data
-function readbin(readbytes, pos, readtype, isbigint) {
-	var buff = new Buffer.alloc(readbytes);
-	totalread = fs.readSync(fd, buff, 0, readbytes, pos);
-	
-	if (totalread == readbytes) {
-		switch (readtype) {
-			case "int8":
-				return buff.readUInt8(0);
-				break;
-			case "int32":
-				return buff.readInt32LE(0);
-				break;
-			case "uint32":
-				return (isbigint) ? bigInt(buff.readUInt32LE(0)) : buff.readUInt32LE(0);
-				break;
-			case "float":
-				return buff.readFloatLE(0);
-				break;
-			case "str":
-				return buff.toString("utf8");
-				break;
-			case "int128":
-				var mybig = bigInt(); // zero
-				var bitshift = 8;
-				for (var x = 0; x < 16; x++) {
-					mybig = mybig.add(bigInt(buff.readUInt8(x)).shiftLeft(bitshift * x));
-				}
-				return mybig;
-				break;
-		}
-	}
-	else {
-		return 0;
-	}
+// Convert IPv4 address to number
+function dot2Num(ipV4) {
+  let d = ipV4.split(".");
+  return ((+d[0] * 256 + +d[1]) * 256 + +d[2]) * 256 + +d[3];
 }
 
-// Read 8 bits integer in the database
-function read8(pos) {
-	readbytes = 1;
-	return readbin(readbytes, pos - 1, "int8");
+// Convert IPv6 address to number
+function ip2No(ipV6) {
+  let maxSections = 8; // should have 8 sections
+  let sectionBits = 16; // 16 bits per section
+  let m = ipV6.split("::");
+
+  let total = bigInt(); // zero
+
+  if (m.length == 2) {
+    let myArrLeft = m[0] != "" ? m[0].split(":") : [];
+    let myArrRight = m[1] != "" ? m[1].split(":") : [];
+    let myArrMid = maxSections - myArrLeft.length - myArrRight.length;
+
+    for (let x = 0; x < myArrLeft.length; x++) {
+      total = total.add(
+        bigInt(parseInt("0x" + myArrLeft[x])).shiftLeft(
+          (maxSections - (x + 1)) * sectionBits
+        )
+      );
+    }
+
+    for (let x = 0; x < myArrRight.length; x++) {
+      total = total.add(
+        bigInt(parseInt("0x" + myArrRight[x])).shiftLeft(
+          (myArrRight.length - (x + 1)) * sectionBits
+        )
+      );
+    }
+  } else if (m.length == 1) {
+    let myArr = m[0].split(":");
+
+    for (let x = 0; x < myArr.length; x++) {
+      total = total.add(
+        bigInt(parseInt("0x" + myArr[x])).shiftLeft(
+          (maxSections - (x + 1)) * sectionBits
+        )
+      );
+    }
+  }
+
+  return total;
 }
 
-// Read 32 bits integer in the database
-function read32(pos, isbigint) {
-	readbytes = 4;
-	return readbin(readbytes, pos - 1, "uint32", isbigint);
+function loadMesg(data, mesg) {
+  for (let key in data) {
+    if (REGEX_TEXT_FIELD.test(key) === false) {
+      data[key] = mesg;
+    }
+  }
 }
 
-// Read 32 bits integer in the buffer
-function read32_row(pos, buff) {
-	return buff.readUInt32LE(pos);
+// API query class
+class IP2LocationWebService {
+  #apiKey = "";
+  #apiPackage = "";
+  #useSSL = true;
+
+  constructor() {}
+
+  // Set the API key and package to query
+  open(apiKey, apiPackage, useSSL = true) {
+    this.#apiKey = apiKey;
+    this.#apiPackage = apiPackage;
+    this.#useSSL = useSSL;
+
+    this.checkParams();
+  }
+
+  // Validate API key and package
+  checkParams() {
+    if (REGEX_API_KEY.test(this.#apiKey) === false) {
+      throw new Error(MSG_INVALID_API_KEY);
+    }
+
+    if (REGEX_API_PACKAGE.test(this.#apiPackage) === false) {
+      throw new Error(MSG_INVALID_API_PACKAGE);
+    }
+  }
+
+  // Query web service to get geolocation information by IP address
+  lookup(myIP, addOn, lang, callback) {
+    this.checkParams(); // check here in case user haven't called open yet
+
+    let data = {
+      key: this.#apiKey,
+      package: this.#apiPackage,
+      ip: myIP,
+    };
+    if (addOn) {
+      data.addon = addOn;
+    }
+    if (lang) {
+      data.lang = lang;
+    }
+
+    let protocol = this.#useSSL ? "https" : "http";
+    let url = protocol + "://" + BASE_URL + "?";
+
+    Object.keys(data).forEach(function (key, index) {
+      if (this[key] != "") {
+        url += key + "=" + encodeURIComponent(this[key]) + "&";
+      }
+    }, data);
+
+    url = url.substring(0, url.length - 1);
+
+    let d = "";
+    let req = https.get(url, function (res) {
+      res.on("data", (chunk) => (d = d + chunk));
+      res.on("end", function () {
+        callback(null, JSON.parse(d));
+      });
+    });
+
+    req.on("error", function (e) {
+      callback(e);
+    });
+  }
+
+  // Check web service credit balance
+  getCredit(callback) {
+    this.checkParams(); // check here in case user haven't called open yet
+
+    let data = {
+      key: this.#apiKey,
+      check: "true",
+    };
+
+    let protocol = this.#useSSL ? "https" : "http";
+    let url = protocol + "://" + BASE_URL + "?";
+
+    Object.keys(data).forEach(function (key, index) {
+      if (this[key] != "") {
+        url += key + "=" + encodeURIComponent(this[key]) + "&";
+      }
+    }, data);
+
+    url = url.substring(0, url.length - 1);
+
+    let d = "";
+    let req = https.get(url, function (res) {
+      res.on("data", (chunk) => (d = d + chunk));
+      res.on("end", function () {
+        callback(null, JSON.parse(d));
+      });
+    });
+
+    req.on("error", function (e) {
+      callback(e);
+    });
+  }
 }
 
-// Read 32 bits float in the database
-function readfloat(pos) {
-	readbytes = 4;
-	return readbin(readbytes, pos - 1, "float");
-}
-
-// Read 32 bits float in the buffer
-function readfloat_row(pos, buff) {
-	return buff.readFloatLE(pos);
-}
-
-function read32or128(pos, iptype) {
-	if (iptype == 4) {
-		return read32(pos, true); // should be bigInt here already
-	}
-	else if (iptype == 6) {
-		return read128(pos); // only IPv6 will run this; already returning bigInt object
-	}
-	else {
-		return 0;
-	}
-}
-
-// Read 128 bits integer in the database
-function read128(pos) {
-	readbytes = 16;
-	return readbin(readbytes, pos - 1, "int128"); // returning bigInt object
-}
-
-// Read strings in the database
-function readstr(pos) {
-	readbytes = 1;
-	return readbin(readbin(readbytes, pos, "int8"), pos + 1, "str");
-}
-
-function dot2num(IPv4) {
-	var d = IPv4.split('.');
-	return ((((((+d[0])*256)+(+d[1]))*256)+(+d[2]))*256)+(+d[3]);
-}
-
-function ip2no(IPv6) {
-	var maxsections = 8; // should have 8 sections
-	var sectionbits = 16; // 16 bits per section
-	var m = IPv6.split('::');
-	
-	var total = bigInt(); // zero
-	
-	if (m.length == 2) {
-		var myarrleft = (m[0] != '') ? m[0].split(":") : [];
-		var myarrright = (m[1] != '') ? m[1].split(":") : [];
-		var myarrmid = maxsections - myarrleft.length - myarrright.length;
-		
-		for (var x = 0; x < myarrleft.length; x++) {
-			total = total.add(bigInt(parseInt("0x" + myarrleft[x])).shiftLeft((maxsections - (x + 1)) * sectionbits));
-		}
-		
-		for (var x = 0; x < myarrright.length; x++) {
-			total = total.add(bigInt(parseInt("0x" + myarrright[x])).shiftLeft((myarrright.length - (x + 1)) * sectionbits));
-		}
-	}
-	else if (m.length == 1) {
-		var myarr = m[0].split(":");
-		
-		for (var x = 0; x < myarr.length; x++) {
-			total = total.add(bigInt(parseInt("0x" + myarr[x])).shiftLeft((maxsections - (x + 1)) * sectionbits));
-		}
-	}
-	
-	return total;
-}
-
-exports.IP2Location_init = function IP2Location_init(binpath) {
-	binfile = binpath;
-	
-	if (binfile && (binfile != "")) {
-		fd = fs.openSync(binfile, 'r');
-		
-		mydb._DBType = read8(1);
-		mydb._DBColumn = read8(2);
-		mydb._DBYear = read8(3);
-		mydb._DBMonth = read8(4);
-		mydb._DBDay = read8(5);
-		mydb._DBCount = read32(6);
-		mydb._BaseAddr = read32(10);
-		mydb._DBCountIPv6 = read32(14);
-		mydb._BaseAddrIPv6 = read32(18);
-		mydb._IndexBaseAddr = read32(22);
-		mydb._IndexBaseAddrIPv6 = read32(26);
-		mydb._ProductCode = read8(30);
-		// below 2 fields just read for now, not being used yet
-		mydb._ProductType = read8(31);
-		mydb._FileSize = read32(32);
-		
-		// check if is correct BIN (should be 1 for IP2Location BIN file), also checking for zipped file (PK being the first 2 chars)
-		if ((mydb._ProductCode != 1 && mydb._DBYear >= 21) || (mydb._DBType == 80 && mydb._DBColumn == 75)) { // only BINs from Jan 2021 onwards have this byte set
-			throw new Error('Incorrect IP2Location BIN file format. Please make sure that you are using the latest IP2Location BIN file.');
-		}
-		
-		if (mydb._IndexBaseAddr > 0) {
-			mydb._Indexed = 1;
-		}
-		
-		if (mydb._DBCountIPv6 == 0) {
-			mydb._OldBIN = 1;
-		}
-		else if (mydb._IndexBaseAddrIPv6 > 0) {
-			mydb._IndexedIPv6 = 1;
-		}
-		
-		IPv4ColumnSize = mydb._DBColumn << 2; // 4 bytes each column
-		IPv6ColumnSize = 16 + ((mydb._DBColumn - 1) << 2); // 4 bytes each column, except IPFrom column which is 16 bytes
-		
-		var dbt = mydb._DBType;
-		
-		country_pos_offset = (country_pos[dbt] != 0) ? (country_pos[dbt] - 2) << 2 : 0;
-		region_pos_offset = (region_pos[dbt] != 0) ? (region_pos[dbt] - 2) << 2 : 0;
-		city_pos_offset = (city_pos[dbt] != 0) ? (city_pos[dbt] - 2) << 2 : 0;
-		isp_pos_offset = (isp_pos[dbt] != 0) ? (isp_pos[dbt] - 2) << 2 : 0;
-		domain_pos_offset = (domain_pos[dbt] != 0) ? (domain_pos[dbt] - 2) << 2 : 0;
-		zipcode_pos_offset = (zipcode_pos[dbt] != 0) ? (zipcode_pos[dbt] - 2) << 2 : 0;
-		latitude_pos_offset = (latitude_pos[dbt] != 0) ? (latitude_pos[dbt] - 2) << 2 : 0;
-		longitude_pos_offset = (longitude_pos[dbt] != 0) ? (longitude_pos[dbt] - 2) << 2 : 0;
-		timezone_pos_offset = (timezone_pos[dbt] != 0) ? (timezone_pos[dbt] - 2) << 2 : 0;
-		netspeed_pos_offset = (netspeed_pos[dbt] != 0) ? (netspeed_pos[dbt] - 2) << 2 : 0;
-		iddcode_pos_offset = (iddcode_pos[dbt] != 0) ? (iddcode_pos[dbt] - 2) << 2 : 0;
-		areacode_pos_offset = (areacode_pos[dbt] != 0) ? (areacode_pos[dbt] - 2) << 2 : 0;
-		weatherstationcode_pos_offset = (weatherstationcode_pos[dbt] != 0) ? (weatherstationcode_pos[dbt] - 2) << 2 : 0;
-		weatherstationname_pos_offset = (weatherstationname_pos[dbt] != 0) ? (weatherstationname_pos[dbt] - 2) << 2 : 0;
-		mcc_pos_offset = (mcc_pos[dbt] != 0) ? (mcc_pos[dbt] - 2) << 2 : 0;
-		mnc_pos_offset = (mnc_pos[dbt] != 0) ? (mnc_pos[dbt] - 2) << 2 : 0;
-		mobilebrand_pos_offset = (mobilebrand_pos[dbt] != 0) ? (mobilebrand_pos[dbt] - 2) << 2 : 0;
-		elevation_pos_offset = (elevation_pos[dbt] != 0) ? (elevation_pos[dbt] - 2) << 2 : 0;
-		usagetype_pos_offset = (usagetype_pos[dbt] != 0) ? (usagetype_pos[dbt] - 2) << 2 : 0;
-		addresstype_pos_offset = (addresstype_pos[dbt] != 0) ? (addresstype_pos[dbt] - 2) << 2 : 0;
-		category_pos_offset = (category_pos[dbt] != 0) ? (category_pos[dbt] - 2) << 2 : 0;
-		
-		country_enabled = (country_pos[dbt] != 0) ? 1 : 0;
-		region_enabled = (region_pos[dbt] != 0) ? 1 : 0;
-		city_enabled = (city_pos[dbt] != 0) ? 1 : 0;
-		isp_enabled = (isp_pos[dbt] != 0) ? 1 : 0;
-		latitude_enabled = (latitude_pos[dbt] != 0) ? 1 : 0;
-		longitude_enabled = (longitude_pos[dbt] != 0) ? 1 : 0;
-		domain_enabled = (domain_pos[dbt] != 0) ? 1 : 0;
-		zipcode_enabled = (zipcode_pos[dbt] != 0) ? 1 : 0;
-		timezone_enabled = (timezone_pos[dbt] != 0) ? 1 : 0;
-		netspeed_enabled = (netspeed_pos[dbt] != 0) ? 1 : 0;
-		iddcode_enabled = (iddcode_pos[dbt] != 0) ? 1 : 0;
-		areacode_enabled = (areacode_pos[dbt] != 0) ? 1 : 0;
-		weatherstationcode_enabled = (weatherstationcode_pos[dbt] != 0) ? 1 : 0;
-		weatherstationname_enabled = (weatherstationname_pos[dbt] != 0) ? 1 : 0;
-		mcc_enabled = (mcc_pos[dbt] != 0) ? 1 : 0;
-		mnc_enabled = (mnc_pos[dbt] != 0) ? 1 : 0;
-		mobilebrand_enabled = (mobilebrand_pos[dbt] != 0) ? 1 : 0;
-		elevation_enabled = (elevation_pos[dbt] != 0) ? 1 : 0;
-		usagetype_enabled = (usagetype_pos[dbt] != 0) ? 1 : 0;
-		addresstype_enabled = (addresstype_pos[dbt] != 0) ? 1 : 0;
-		category_enabled = (category_pos[dbt] != 0) ? 1 : 0;
-		
-		if (mydb._Indexed == 1) {
-			var pointer = mydb._IndexBaseAddr;
-			
-			for (var x = 0; x < maxindex; x++) {
-				IndexArrayIPv4[x] = Array(2);
-				IndexArrayIPv4[x][0] = read32(pointer);
-				IndexArrayIPv4[x][1] = read32(pointer + 4);
-				pointer += 8;
-			}
-			
-			if (mydb._IndexedIPv6 == 1) {
-				for (var x = 0; x < maxindex; x++) {
-					IndexArrayIPv6[x] = Array(2);
-					IndexArrayIPv6[x][0] = read32(pointer);
-					IndexArrayIPv6[x][1] = read32(pointer + 4);
-					pointer += 8;
-				}
-			}
-		}
-	}
-}
-
-exports.IP2Location_close = function IP2Location_close() {
-	binfile = "";
-	try {
-		fs.closeSync(fd);
-	}
-	catch (err) {
-		// do nothing
-	}
-	mydb._DBType = 0;
-	mydb._DBColumn = 0;
-	mydb._DBYear = 0;
-	mydb._DBMonth = 0;
-	mydb._DBDay = 0;
-	mydb._DBCount = 0;
-	mydb._BaseAddr = 0;
-	mydb._DBCountIPv6 = 0;
-	mydb._BaseAddrIPv6 = 0;
-	mydb._OldBIN = 0;
-	mydb._Indexed = 0;
-	mydb._IndexedIPv6 = 0;
-	mydb._IndexBaseAddr = 0;
-	mydb._IndexBaseAddrIPv6 = 0;
-	mydb._ProductCode = 0;
-	mydb._ProductType = 0;
-	mydb._FileSize = 0;
-}
-
-function IP2Location_query(myIP, iptype, data) {
-	_DBType = mydb._DBType;
-	_DBColumn = mydb._DBColumn;
-	low = 0;
-	mid = 0;
-	high = 0;
-	var MAX_IP_RANGE = bigInt();
-	
-	if (iptype == 4) { // IPv4
-		MAX_IP_RANGE = MAX_IPV4_RANGE;
-		high = mydb._DBCount;
-		_BaseAddr = mydb._BaseAddr;
-		_ColumnSize = IPv4ColumnSize;
-		ipnum = dot2num(myIP);
-		
-		if (mydb._Indexed == 1) {
-			indexaddr = ipnum >>> 16;
-			low = IndexArrayIPv4[indexaddr][0];
-			high = IndexArrayIPv4[indexaddr][1];
-		}
-	}
-	else if (iptype == 6) { // IPv6
-		MAX_IP_RANGE = MAX_IPV6_RANGE;
-		high = mydb._DBCountIPv6;
-		_BaseAddr = mydb._BaseAddrIPv6;
-		_ColumnSize = IPv6ColumnSize;
-		ipnum = ip2no(myIP);
-		
-		if ((ipnum.geq(FROM_6TO4) && ipnum.leq(TO_6TO4)) || (ipnum.geq(FROM_TEREDO) && ipnum.leq(TO_TEREDO))) {
-			iptype = 4;
-			MAX_IP_RANGE = MAX_IPV4_RANGE;
-			high = mydb._DBCount;
-			_BaseAddr = mydb._BaseAddr;
-			_ColumnSize = IPv4ColumnSize;
-			
-			if (ipnum.geq(FROM_6TO4) && ipnum.leq(TO_6TO4)) {
-				ipnum = ipnum.shiftRight(80).and(LAST_32BITS).toJSNumber();
-			}
-			else {
-				ipnum = ipnum.not().and(LAST_32BITS).toJSNumber();
-			}
-			if (mydb._Indexed == 1) {
-				indexaddr = ipnum >>> 16;
-				low = IndexArrayIPv4[indexaddr][0];
-				high = IndexArrayIPv4[indexaddr][1];
-			}
-		}
-		else {
-			if (mydb._IndexedIPv6 == 1) {
-				indexaddr = ipnum.shiftRight(112).toJSNumber();
-				low = IndexArrayIPv6[indexaddr][0];
-				high = IndexArrayIPv6[indexaddr][1];
-			}
-		}
-	}
-	
-	MSG_NOT_SUPPORTED = "This method is not applicable for current IP2Location binary data file. Please upgrade your subscription package to install new data file.";
-	
-	data.ip = myIP;
-	ipnum = bigInt(ipnum);
-	
-	if (ipnum.geq(MAX_IP_RANGE)) {
-		ipnum = MAX_IP_RANGE.minus(1);
-	}
-	
-	data.ip_no = ipnum.toString();
-	
-	while (low <= high) {
-		mid = parseInt((low + high) / 2);
-		rowoffset = _BaseAddr + (mid * _ColumnSize)
-		rowoffset2 = rowoffset + _ColumnSize
-		
-		var ipfrom = read32or128(rowoffset, iptype);
-		var ipto = read32or128(rowoffset2, iptype);
-		
-		ipfrom = bigInt(ipfrom);
-		ipto = bigInt(ipto);
-		
-		if (ipfrom.leq(ipnum) && ipto.gt(ipnum)) {
-			for (var key in data) {
-				if (/^(ip|ip_no|latitude|longitude|elevation)$/i.test(key) === false) {
-					data[key] = MSG_NOT_SUPPORTED;
-				}
-				else if (/^(ip|ip_no)$/i.test(key) === false) {
-					data[key] = 0;
-				}
-			}
-			
-			var firstcol = 4;
-			if (iptype == 6) {
-				firstcol = 16;
-			}
-			
-			var row = readrow(_ColumnSize - firstcol, rowoffset + firstcol);
-			
-			if (country_enabled) {
-				countrypos = read32_row(country_pos_offset, row);
-				data.country_short = readstr(countrypos);
-				data.country_long = readstr(countrypos + 3);
-			}
-			if (region_enabled) {
-				data.region = readstr(read32_row(region_pos_offset, row));
-			}
-			if (city_enabled) {
-				data.city = readstr(read32_row(city_pos_offset, row));
-			}
-			if (isp_enabled) {
-				data.isp = readstr(read32_row(isp_pos_offset, row));
-			}
-			if (domain_enabled) {
-				data.domain = readstr(read32_row(domain_pos_offset, row));
-			}
-			if (zipcode_enabled) {
-				data.zipcode = readstr(read32_row(zipcode_pos_offset, row));
-			}
-			if (latitude_enabled) {
-				data.latitude = Math.round(readfloat_row(latitude_pos_offset, row) * 1000000, 6) / 1000000;
-			}
-			if (longitude_enabled) {
-				data.longitude = Math.round(readfloat_row(longitude_pos_offset, row) * 1000000, 6) / 1000000;
-			}
-			if (timezone_enabled) {
-				data.timezone = readstr(read32_row(timezone_pos_offset, row));
-			}
-			if (netspeed_enabled) {
-				data.netspeed = readstr(read32_row(netspeed_pos_offset, row));
-			}
-			if (iddcode_enabled) {
-				data.iddcode = readstr(read32_row(iddcode_pos_offset, row));
-			}
-			if (areacode_enabled) {
-				data.areacode = readstr(read32_row(areacode_pos_offset, row));
-			}
-			if (weatherstationcode_enabled) {
-				data.weatherstationcode = readstr(read32_row(weatherstationcode_pos_offset, row));
-			}
-			if (weatherstationname_enabled) {
-				data.weatherstationname = readstr(read32_row(weatherstationname_pos_offset, row));
-			}
-			if (mcc_enabled) {
-				data.mcc = readstr(read32_row(mcc_pos_offset, row));
-			}
-			if (mnc_enabled) {
-				data.mnc = readstr(read32_row(mnc_pos_offset, row));
-			}
-			if (mobilebrand_enabled) {
-				data.mobilebrand = readstr(read32_row(mobilebrand_pos_offset, row));
-			}
-			if (elevation_enabled) {
-				data.elevation = readstr(read32_row(elevation_pos_offset, row));
-			}
-			if (usagetype_enabled) {
-				data.usagetype = readstr(read32_row(usagetype_pos_offset, row));
-			}
-			if (addresstype_enabled) {
-				data.addresstype = readstr(read32_row(addresstype_pos_offset, row));
-			}
-			if (category_enabled) {
-				data.category = readstr(read32_row(category_pos_offset, row));
-			}
-			data.status = "OK";
-			return;
-		}
-		else {
-			if (ipfrom.gt(ipnum)) {
-				high = mid - 1;
-			}
-			else {
-				low = mid + 1;
-			}
-		}
-	}
-	data.status = "IP_ADDRESS_NOT_FOUND";
-}
-
-exports.IP2Location_get_all = function IP2Location_get_all(myIP) {
-	var data = {
-		"ip": "?",
-		"ip_no": "?",
-		"country_short": "?",
-		"country_long": "?",
-		"region": "?",
-		"city": "?",
-		"isp": "?",
-		"latitude": "?",
-		"longitude": "?",
-		"domain": "?",
-		"zipcode": "?",
-		"timezone": "?",
-		"netspeed": "?",
-		"iddcode": "?",
-		"areacode": "?",
-		"weatherstationcode": "?",
-		"weatherstationname": "?",
-		"mcc": "?",
-		"mnc": "?",
-		"mobilebrand": "?",
-		"elevation": "?",
-		"usagetype": "?",
-		"addresstype": "?",
-		"category": "?",
-		"status": "?"
-	};
-	
-	if (/^[:0]+:F{4}:(\d+\.){3}\d+$/i.test(myIP)) {
-		myIP = myIP.replace(/^[:0]+:F{4}:/i, '');
-	}
-	else if (/^[:0]+F{4}(:[\dA-Z]{4}){2}$/i.test(myIP)) {
-		tmp = myIP.replace(/^[:0]+F{4}:/i, '');
-		tmp = tmp.replace(/:/, '');
-		tmparr = [];
-		for (var x = 0; x < 8; x = x + 2) {
-			tmparr.push(parseInt("0x" + tmp.substring(x, x + 2)));
-		}
-		myIP = tmparr.join('.');
-	}
-	iptype = net.isIP(myIP);
-	
-	if (iptype == 0) {
-		data.status = "INVALID_IP_ADDRESS";
-		return data;
-	}
-	else if ((!binfile) || (binfile == "") || (!fs.existsSync(binfile))) {
-		data.status = "MISSING_FILE";
-		return data;
-	}
-	else if (mydb._DBType == 0) {
-		data.status = "RUN_INIT_FIRST";
-		return data;
-	}
-	else if ((iptype == 6) && (mydb._OldBIN == 1)) {
-		data.status = "IPV6_NOT_SUPPORTED";
-		return data;
-	}
-	else {
-		IP2Location_query(myIP, iptype, data);
-		return data;
-	}
-}
-
-exports.IP2Location_get_country_short = function IP2Location_get_country_short(myIP) {
-	data = this.IP2Location_get_all(myIP);
-	return data.country_short;
-}
-
-exports.IP2Location_get_country_long = function IP2Location_get_country_long(myIP) {
-	data = this.IP2Location_get_all(myIP);
-	return data.country_long;
-}
-
-exports.IP2Location_get_region = function IP2Location_get_region(myIP) {
-	data = this.IP2Location_get_all(myIP);
-	return data.region;
-}
-
-exports.IP2Location_get_city = function IP2Location_get_city(myIP) {
-	data = this.IP2Location_get_all(myIP);
-	return data.city;
-}
-
-exports.IP2Location_get_isp = function IP2Location_get_isp(myIP) {
-	data = this.IP2Location_get_all(myIP);
-	return data.isp;
-}
-
-exports.IP2Location_get_latitude = function IP2Location_get_latitude(myIP) {
-	data = this.IP2Location_get_all(myIP);
-	return data.latitude;
-}
-
-exports.IP2Location_get_longitude = function IP2Location_get_longitude(myIP) {
-	data = this.IP2Location_get_all(myIP);
-	return data.longitude;
-}
-
-exports.IP2Location_get_domain = function IP2Location_get_domain(myIP) {
-	data = this.IP2Location_get_all(myIP);
-	return data.domain;
-}
-
-exports.IP2Location_get_zipcode = function IP2Location_get_zipcode(myIP) {
-	data = this.IP2Location_get_all(myIP);
-	return data.zipcode;
-}
-
-exports.IP2Location_get_timezone = function IP2Location_get_timezone(myIP) {
-	data = this.IP2Location_get_all(myIP);
-	return data.timezone;
-}
-
-exports.IP2Location_get_netspeed = function IP2Location_get_netspeed(myIP) {
-	data = this.IP2Location_get_all(myIP);
-	return data.netspeed;
-}
-
-exports.IP2Location_get_iddcode = function IP2Location_get_iddcode(myIP) {
-	data = this.IP2Location_get_all(myIP);
-	return data.iddcode;
-}
-
-exports.IP2Location_get_areacode = function IP2Location_get_areacode(myIP) {
-	data = this.IP2Location_get_all(myIP);
-	return data.areacode;
-}
-
-exports.IP2Location_get_weatherstationcode = function IP2Location_get_weatherstationcode(myIP) {
-	data = this.IP2Location_get_all(myIP);
-	return data.weatherstationcode;
-}
-
-exports.IP2Location_get_weatherstationname = function IP2Location_get_weatherstationname(myIP) {
-	data = this.IP2Location_get_all(myIP);
-	return data.weatherstationname;
-}
-
-exports.IP2Location_get_mcc = function IP2Location_get_mcc(myIP) {
-	data = this.IP2Location_get_all(myIP);
-	return data.mcc;
-}
-
-exports.IP2Location_get_mnc = function IP2Location_get_mnc(myIP) {
-	data = this.IP2Location_get_all(myIP);
-	return data.mnc;
-}
-
-exports.IP2Location_get_mobilebrand = function IP2Location_get_mobilebrand(myIP) {
-	data = this.IP2Location_get_all(myIP);
-	return data.mobilebrand;
-}
-
-exports.IP2Location_get_elevation = function IP2Location_get_elevation(myIP) {
-	data = this.IP2Location_get_all(myIP);
-	return data.elevation;
-}
-
-exports.IP2Location_get_usagetype = function IP2Location_get_usagetype(myIP) {
-	data = this.IP2Location_get_all(myIP);
-	return data.usagetype;
-}
-
-exports.IP2Location_get_addresstype = function IP2Location_get_addresstype(myIP) {
-	data = this.IP2Location_get_all(myIP);
-	return data.addresstype;
-}
-
-exports.IP2Location_get_category = function IP2Location_get_category(myIP) {
-	data = this.IP2Location_get_all(myIP);
-	return data.category;
-}
+module.exports = {
+  IP2Location: IP2Location,
+  IP2LocationWebService: IP2LocationWebService,
+};
