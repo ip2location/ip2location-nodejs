@@ -4,7 +4,7 @@ var bigInt = require("big-integer");
 var https = require("https");
 
 // For BIN queries
-const VERSION = "9.0.0";
+const VERSION = "9.1.0";
 const MAX_INDEX = 65536;
 const COUNTRY_POSITION = [
   0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
