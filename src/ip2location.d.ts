@@ -9,7 +9,7 @@ export class IP2Location {
     readFloatRow(position: any, buffer: any): any;
     readStr(position: any): any;
     loadBin(): boolean;
-    open(binPath: any): void;
+    open(binPath: any): 0 | -1;
     close(): 0 | -1;
     geoQueryData(myIP: any, ipType: any, data: any, mode: any): void;
     geoQuery(myIP: any, mode: any): {

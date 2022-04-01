@@ -455,7 +455,15 @@ class IP2Location {
   open(binPath) {
     if (this.#myDB.dbType == 0) {
       this.#binFile = binPath;
-      this.loadBin();
+
+      if (!this.loadBin()) {
+        // problems reading BIN
+        return -1;
+      } else {
+        return 0;
+      }
+    } else {
+      return 0;
     }
   }
 
