@@ -1,4 +1,4 @@
-const {IP2Location, IP2LocationWebService} = require("ip2location-nodejs");
+const {IP2Location, IP2LocationWebService, IPTools} = require("ip2location-nodejs");
 
 let ip2location = new IP2Location();
 
@@ -63,3 +63,24 @@ ws.lookup(ip, addon, lang, (err, data) => {
 		});
 	}
 });
+
+let tools = new IPTools();
+
+console.log(tools.isIPV4("60.54.166.38"));
+console.log(tools.isIPV6("2001:4860:4860::8888"));
+console.log(tools.ipV4ToDecimal("60.54.166.38"));
+console.log(tools.ipV6ToDecimal("2001:4860:4860::8888"));
+console.log(tools.decimalToIPV4(1010214438));
+console.log(tools.decimalToIPV6("530610913025797008819807084026527744"));
+console.log(tools.compressIPV6("66:3123:4860:3234:411:23:000:000"));
+console.log(tools.expandIPV6("66:023:40:34:411:23:000:000"));
+let cidr = tools.ipV4ToCIDR("10.0.0.0", "10.10.2.255");
+for (const x of cidr) {
+	console.log(x);
+}
+cidr = tools.ipV6ToCIDR("2001:4860:4860:0000:0000:0000:0000:8888", "2001:4860:4860:0000:eeee:ffff:ffff:ffff");
+for (const x of cidr) {
+	console.log(x);
+}
+console.log(tools.cidrToIPV4("10.123.80.0/12"));
+console.log(tools.cidrToIPV6("2002:1234::abcd:ffff:c0a8:101/62"));

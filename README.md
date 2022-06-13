@@ -151,3 +151,50 @@ ws.lookup(ip, addon, lang, (err, data) => {
 });
 
 ```
+
+## IPTOOLS CLASS
+
+## Methods
+Below are the methods supported in this module.
+
+|Method Name|Description|
+|---|---|
+|isIPV4(myIP)|Returns true if string contains an IPv4 address. Otherwise false.|
+|isIPV6(myIP)|Returns true if string contains an IPv6 address. Otherwise false.|
+|ipV4ToDecimal(myIP)|Returns the IP number for an IPv4 address.|
+|ipV6ToDecimal(myIP)|Returns the IP number for an IPv6 address.|
+|decimalToIPV4(ipNum)|Returns the IPv4 address for the supplied IP number.|
+|decimalToIPV6(ipNum)|Returns the IPv6 address for the supplied IP number.|
+|compressIPV6(myIP)|Returns the IPv6 address in compressed form.|
+|expandIPV6(myIP)|Returns the IPv6 address in expanded form.|
+|ipV4ToCIDR(ipFrom, ipTo)|Returns a list of CIDR from the supplied IPv4 range.|
+|ipV6ToCIDR(ipFrom, ipTo)|Returns a list of CIDR from the supplied IPv6 range.|
+|cidrToIPV4(cidr)|Returns the IPv4 range from the supplied CIDR.|
+|cidrToIPV6(cidr)|Returns the IPv6 range from the supplied CIDR.|
+
+## Usage
+
+```javascript
+const {IPTools} = require("ip2location-nodejs");
+
+let tools = new IPTools();
+
+console.log(tools.isIPV4("60.54.166.38"));
+console.log(tools.isIPV6("2001:4860:4860::8888"));
+console.log(tools.ipV4ToDecimal("60.54.166.38"));
+console.log(tools.ipV6ToDecimal("2001:4860:4860::8888"));
+console.log(tools.decimalToIPV4(1010214438));
+console.log(tools.decimalToIPV6("530610913025797008819807084026527744"));
+console.log(tools.compressIPV6("66:3123:4860:3234:411:23:000:000"));
+console.log(tools.expandIPV6("66:023:40:34:411:23:000:000"));
+let cidr = tools.ipV4ToCIDR("10.0.0.0", "10.10.2.255");
+for (const x of cidr) {
+	console.log(x);
+}
+cidr = tools.ipV6ToCIDR("2001:4860:4860:0000:0000:0000:0000:8888", "2001:4860:4860:0000:eeee:ffff:ffff:ffff");
+for (const x of cidr) {
+	console.log(x);
+}
+console.log(tools.cidrToIPV4("10.123.80.0/12"));
+console.log(tools.cidrToIPV6("2002:1234::abcd:ffff:c0a8:101/62"));
+```

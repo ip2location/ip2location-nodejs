@@ -98,3 +98,19 @@ export class IP2LocationWebService {
     getCredit(callback: any): void;
     #private;
 }
+export class IPTools {
+    isIPV4(myIP: any): any;
+    isIPV6(myIP: any): any;
+    ipV4ToDecimal(myIP: any): number;
+    ipV6ToDecimal(myIP: any): any;
+    decimalToIPV4(ipNum: any): string;
+    decimalToIPV6(ipNum: any): any;
+    compressIPV6(myIP: any): any;
+    expandIPV6(myIP: any): any;
+    ipV4ToCIDR(ipFrom: any, ipTo: any): string[];
+    ipToBinary(myIP: any): any;
+    binaryToIP(myBin: any): any;
+    ipV6ToCIDR(ipFrom: any, ipTo: any): string[];
+    cidrToIPV4(cidr: any): string[];
+    cidrToIPV6(cidr: any): any[];
+}

@@ -4,7 +4,7 @@ var bigInt = require("big-integer");
 var https = require("https");
 
 // For BIN queries
-const VERSION = "9.1.0";
+const VERSION = "9.2.0";
 const MAX_INDEX = 65536;
 const COUNTRY_POSITION = [
   0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
@@ -132,6 +132,15 @@ const REGEX_API_PACKAGE = /^WS\d+$/;
 const BASE_URL = "api.ip2location.com/v2/";
 const MSG_INVALID_API_KEY = "Invalid API key.";
 const MSG_INVALID_API_PACKAGE = "Invalid package name.";
+
+// For IPTools
+const REGEX_IPV6_SEGMENT_MATCH = /(.{4})/g;
+const REGEX_IPV6_ZERO_1_MATCH = /^(0:){2,}/;
+const REGEX_IPV6_ZERO_2_MATCH = /:(0:){2,}/;
+const REGEX_IPV6_ZERO_3_MATCH = /(:0){2,}$/;
+const REGEX_IPV6_BIN_MATCH = /[01]{1,128}/;
+const REGEX_IPV4_PREFIX_MATCH = /^[0-9]{1,2}$/;
+const REGEX_IPV6_PREFIX_MATCH = /^[0-9]{1,3}$/;
 
 // BIN query class
 class IP2Location {
@@ -472,7 +481,7 @@ class IP2Location {
       this.#myDB.baseAddressIPV6 = 0;
       this.#myDB.dbCountIPV6 = 0;
       this.#myDB.indexed = 0;
-      this.$myDB.indexedIPV6 = 0;
+      this.#myDB.indexedIPV6 = 0;
       this.#myDB.indexBaseAddress = 0;
       this.#myDB.indexBaseAddressIPV6 = 0;
       this.#myDB.productCode = 0;
@@ -1127,7 +1136,363 @@ class IP2LocationWebService {
   }
 }
 
+// IPTools class
+class IPTools {
+  constructor() {}
+
+  // Check if IP is IPv4 address
+  isIPV4(myIP) {
+    return net.isIPv4(myIP);
+  }
+
+  // Check if IP is IPv6 address
+  isIPV6(myIP) {
+    return net.isIPv6(myIP);
+  }
+
+  // Convert IPv4 address to IP number
+  ipV4ToDecimal(myIP) {
+    if (!this.isIPV4(myIP)) {
+      return null;
+    }
+
+    return dot2Num(myIP);
+  }
+
+  // Convert IPv6 address to IP number
+  ipV6ToDecimal(myIP) {
+    if (!this.isIPV6(myIP)) {
+      return null;
+    }
+
+    return ip2No(myIP);
+  }
+
+  // Convert IP number to IPv4 address
+  decimalToIPV4(ipNum) {
+    if (ipNum < 0 || ipNum > 4294967295) {
+      return null;
+    }
+    let v4 =
+      Math.floor((ipNum / 16777216) % 256) +
+      "." +
+      Math.floor((ipNum / 65536) % 256) +
+      "." +
+      Math.floor((ipNum / 256) % 256) +
+      "." +
+      Math.floor(ipNum % 256);
+
+    return v4;
+  }
+
+  // Convert IP number to IPv6 address
+  decimalToIPV6(ipNum) {
+    if (typeof ipNum == "string" || typeof ipNum == "number") {
+      ipNum = bigInt(ipNum);
+    }
+
+    if (ipNum.lt(bigInt.zero) || ipNum.gt(MAX_IPV6_RANGE)) {
+      return null;
+    }
+
+    let x = ipNum.toString(16);
+    x = x.padStart(32, "0");
+    let matches = x.matchAll(REGEX_IPV6_SEGMENT_MATCH);
+
+    // trim leading zeroes from each segment
+    x = Array.from(matches).map((match) => {
+      let m = match[0].replace(/^0+/, "");
+      m = m == "" ? "0" : m;
+      return m;
+    });
+
+    let v6 = x.join(":");
+
+    return v6;
+  }
+
+  // Compress IPv6 address
+  compressIPV6(myIP) {
+    if (!this.isIPV6(myIP)) {
+      return null;
+    }
+
+    myIP = this.decimalToIPV6(this.ipV6ToDecimal(myIP)); // to format the IPv6 so that we can easily match below
+
+    let v6 = myIP;
+
+    if (REGEX_IPV6_ZERO_1_MATCH.test(v6)) {
+      v6 = v6.replace(REGEX_IPV6_ZERO_1_MATCH, "::");
+    } else if (REGEX_IPV6_ZERO_2_MATCH.test(v6)) {
+      v6 = v6.replace(REGEX_IPV6_ZERO_2_MATCH, "::");
+    } else if (REGEX_IPV6_ZERO_3_MATCH.test(v6)) {
+      v6 = v6.replace(REGEX_IPV6_ZERO_3_MATCH, "::");
+    }
+    v6 = v6.replace(/::0$/, "::"); // special case
+
+    return v6;
+  }
+
+  // Expand IPv6 address
+  expandIPV6(myIP) {
+    if (!this.isIPV6(myIP)) {
+      return null;
+    }
+
+    let ipNum = this.ipV6ToDecimal(myIP);
+    let x = ipNum.toString(16);
+    x = x.padStart(32, "0");
+    let matches = x.matchAll(REGEX_IPV6_SEGMENT_MATCH);
+    x = Array.from(matches).map((match) => match[0]);
+    let v6 = x.join(":");
+
+    return v6;
+  }
+
+  // Convert IPv4 range to CIDR
+  ipV4ToCIDR(ipFrom, ipTo) {
+    if (!this.isIPV4(ipFrom) || !this.isIPV4(ipTo)) {
+      return null;
+    }
+
+    let startIP = this.ipV4ToDecimal(ipFrom);
+    let endIP = this.ipV4ToDecimal(ipTo);
+    let result = [];
+
+    while (endIP >= startIP) {
+      let maxSize = 32;
+
+      while (maxSize > 0) {
+        let mask = Math.pow(2, 32) - Math.pow(2, 32 - (maxSize - 1));
+        let maskBase = startIP & mask;
+
+        if (maskBase != startIP) {
+          break;
+        }
+
+        maxSize -= 1;
+      }
+
+      let x = Math.log(endIP - startIP + 1) / Math.log(2);
+      let maxDiff = 32 - Math.floor(x);
+
+      if (maxSize < maxDiff) {
+        maxSize = maxDiff;
+      }
+
+      let ip = this.decimalToIPV4(startIP);
+      result.push(ip + "/" + maxSize);
+      startIP += Math.pow(2, 32 - maxSize);
+    }
+    return result;
+  }
+
+  // Convert IPv6 to binary string representation
+  ipToBinary(myIP) {
+    if (!this.isIPV6(myIP)) {
+      return null;
+    }
+    let ipNum = this.ipV6ToDecimal(myIP);
+    let x = ipNum.toString(2);
+    x = x.padStart(128, "0");
+
+    return x;
+  }
+
+  // Convert binary string representation to IPv6
+  binaryToIP(myBin) {
+    if (!REGEX_IPV6_BIN_MATCH.test(myBin)) {
+      return null;
+    }
+
+    let ipNum = bigInt(myBin, 2);
+    let v6 = this.decimalToIPV6(ipNum);
+
+    return v6;
+  }
+
+  // Convert IPv6 range to CIDR
+  ipV6ToCIDR(ipFrom, ipTo) {
+    if (!this.isIPV6(ipFrom) || !this.isIPV6(ipTo)) {
+      return null;
+    }
+
+    let ipFromBin = this.ipToBinary(ipFrom);
+    let ipToBin = this.ipToBinary(ipTo);
+
+    if (ipFromBin == null || ipToBin == null) {
+      return null;
+    }
+    let result = [];
+    let networkSize = 0;
+    let shift = 0;
+
+    let padded = "";
+    let unpadded = "";
+    let networks = [];
+    let n = 0;
+
+    if (ipFromBin == ipToBin) {
+      result.push(ipFrom + "/128");
+      return result;
+    }
+
+    if (ipFromBin > ipToBin) {
+      let tmp = ipFromBin;
+      ipFromBin = ipToBin;
+      ipToBin = tmp;
+    }
+
+    do {
+      if (ipFromBin.charAt(ipFromBin.length - 1) == "1") {
+        unpadded = ipFromBin.substring(networkSize, 128);
+        padded = unpadded.padEnd(128, "0");
+        networks[padded] = 128 - networkSize;
+        n = ipFromBin.lastIndexOf("0");
+        ipFromBin = (n == 0 ? "" : ipFromBin.substring(0, n)) + "1";
+        ipFromBin = ipFromBin.padEnd(128, "0");
+      }
+
+      if (ipToBin.charAt(ipToBin.length - 1) == "0") {
+        unpadded = ipToBin.substring(networkSize, 128);
+        padded = unpadded.padEnd(128, "0");
+        networks[padded] = 128 - networkSize;
+        n = ipToBin.lastIndexOf("1");
+        ipToBin = (n == 0 ? "" : ipToBin.substring(0, n)) + "0";
+        ipToBin = ipToBin.padEnd(128, "1");
+      }
+
+      if (ipToBin < ipFromBin) {
+        continue;
+      }
+
+      shift =
+        128 - Math.max(ipFromBin.lastIndexOf("0"), ipToBin.lastIndexOf("1"));
+
+      unpadded = ipFromBin.substring(0, 128 - shift);
+      ipFromBin = unpadded.padStart(128, "0");
+      unpadded = ipToBin.substring(0, 128 - shift);
+      ipToBin = unpadded.padStart(128, "0");
+
+      networkSize += shift;
+
+      if (ipFromBin == ipToBin) {
+        unpadded = ipFromBin.substring(networkSize, 128);
+        padded = unpadded.padEnd(128, "0");
+        networks[padded] = 128 - networkSize;
+      }
+    } while (ipFromBin < ipToBin);
+
+    let k = Object.keys(networks).sort();
+
+    for (const val of k) {
+      result.push(
+        this.compressIPV6(this.binaryToIP(val)) + "/" + networks[val]
+      );
+    }
+
+    return result;
+  }
+
+  // Convert CIDR to IPv4 range
+  cidrToIPV4(cidr) {
+    if (!cidr.includes("/")) {
+      return null;
+    }
+
+    let ip = "";
+    let prefix = 0;
+    let arr = cidr.split("/");
+    let ipStart = "";
+    let ipEnd = "";
+    let ipStartLong = 0;
+    let ipEndLong = 0;
+    let total = 0;
+
+    if (
+      arr.length != 2 ||
+      !this.isIPV4(arr[0]) ||
+      !REGEX_IPV4_PREFIX_MATCH.test(arr[1]) ||
+      parseInt(arr[1]) > 32
+    ) {
+      return null;
+    }
+
+    ip = arr[0];
+    prefix = parseInt(arr[1]);
+
+    ipStartLong = this.ipV4ToDecimal(ip);
+    ipStartLong = ipStartLong & (-1 << (32 - prefix));
+    ipStart = this.decimalToIPV4(ipStartLong);
+
+    total = 1 << (32 - prefix);
+
+    ipEndLong = ipStartLong + total - 1;
+
+    if (ipEndLong > 4294967295) {
+      ipEndLong = 4294967295;
+    }
+
+    ipEnd = this.decimalToIPV4(ipEndLong);
+
+    return [ipStart, ipEnd];
+  }
+
+  // Convert CIDR to IPv6 range
+  cidrToIPV6(cidr) {
+    if (!cidr.includes("/")) {
+      return null;
+    }
+
+    let ip = "";
+    let prefix = 0;
+    let arr = cidr.split("/");
+
+    if (
+      arr.length != 2 ||
+      !this.isIPV6(arr[0]) ||
+      !REGEX_IPV6_PREFIX_MATCH.test(arr[1]) ||
+      parseInt(arr[1]) > 128
+    ) {
+      return null;
+    }
+
+    ip = arr[0];
+    prefix = parseInt(arr[1]);
+
+    let hexStartAddress = this.expandIPV6(ip).replaceAll(":", "");
+    let hexEndAddress = hexStartAddress;
+
+    let bits = 128 - prefix;
+    let x = 0;
+    let y = "";
+    let pos = 31;
+
+    while (bits > 0) {
+      x = parseInt(hexEndAddress.charAt(pos), 16);
+      y = (x | (Math.pow(2, Math.min(4, bits)) - 1)).toString(16); // single hex char
+
+      // replace char
+      hexEndAddress =
+        hexEndAddress.substring(0, pos) +
+        y +
+        hexEndAddress.substring(pos + y.length);
+
+      bits -= 4;
+      pos -= 1;
+    }
+
+    hexStartAddress = hexStartAddress.replaceAll(/(.{4})/g, "$1:");
+    hexStartAddress = hexStartAddress.substring(0, hexStartAddress.length - 1);
+    hexEndAddress = hexEndAddress.replaceAll(/(.{4})/g, "$1:");
+    hexEndAddress = hexEndAddress.substring(0, hexEndAddress.length - 1);
+
+    return [hexStartAddress, hexEndAddress];
+  }
+}
+
 module.exports = {
   IP2Location: IP2Location,
   IP2LocationWebService: IP2LocationWebService,
+  IPTools: IPTools,
 };
