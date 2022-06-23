@@ -2,8 +2,11 @@ export class IP2Location {
     readRow(readBytes: any, position: any): any;
     readBin(readBytes: any, position: any, readType: any, isBigInt: any): any;
     read8(position: any): any;
+    read8Row(position: any, buffer: any): any;
     read32(position: any, isBigInt: any): any;
     read32Row(position: any, buffer: any): any;
+    read128Row(position: any, buffer: any): any;
+    read32Or128Row(position: any, buffer: any, len: any): any;
     read32Or128(position: any, ipType: any): any;
     read128(position: any): any;
     readFloatRow(position: any, buffer: any): any;

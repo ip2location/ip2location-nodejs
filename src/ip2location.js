@@ -4,7 +4,7 @@ var bigInt = require("big-integer");
 var https = require("https");
 
 // For BIN queries
-const VERSION = "9.2.0";
+const VERSION = "9.3.0";
 const MAX_INDEX = 65536;
 const COUNTRY_POSITION = [
   0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
@@ -269,6 +269,11 @@ class IP2Location {
     return this.readBin(readBytes, position - 1, "int8");
   }
 
+  // Read 8 bits integer in the buffer
+  read8Row(position, buffer) {
+    return buffer.readUInt8(position);
+  }
+
   // Read 32 bits integer in the database
   read32(position, isBigInt) {
     let readBytes = 4;
@@ -278,6 +283,29 @@ class IP2Location {
   // Read 32 bits integer in the buffer
   read32Row(position, buffer) {
     return buffer.readUInt32LE(position);
+  }
+
+  // Read 128 bits integer in the buffer
+  read128Row(position, buffer) {
+    let myBig = bigInt(); // zero
+    let bitShift = 8;
+    for (let x = 0; x < 16; x++) {
+      let pos = position + x;
+      myBig = myBig.add(
+        bigInt(this.read8Row(pos, buffer)).shiftLeft(bitShift * x)
+      );
+    }
+    return myBig;
+  }
+
+  read32Or128Row(position, buffer, len) {
+    if (len == 4) {
+      return this.read32Row(position, buffer);
+    } else if (len == 16) {
+      return this.read128Row(position, buffer);
+    } else {
+      return 0;
+    }
   }
 
   read32Or128(position, ipType) {
@@ -303,12 +331,10 @@ class IP2Location {
 
   // Read strings in the database
   readStr(position) {
-    let readBytes = 1;
-    return this.readBin(
-      this.readBin(readBytes, position, "int8"),
-      position + 1,
-      "str"
-    );
+    let readBytes = 256; // max size of string field + 1 byte for the length
+    let row = this.readRow(readBytes, position + 1);
+    let len = this.read8Row(0, row);
+    return row.toString("utf8", 1, len + 1);
   }
 
   // Read metadata and indexes
@@ -319,21 +345,24 @@ class IP2Location {
       if (this.#binFile && this.#binFile != "") {
         this.#fd = fs.openSync(this.#binFile, "r");
 
-        this.#myDB.dbType = this.read8(1);
-        this.#myDB.dbColumn = this.read8(2);
-        this.#myDB.dbYear = this.read8(3);
-        this.#myDB.dbMonth = this.read8(4);
-        this.#myDB.dbDay = this.read8(5);
-        this.#myDB.dbCount = this.read32(6);
-        this.#myDB.baseAddress = this.read32(10);
-        this.#myDB.dbCountIPV6 = this.read32(14);
-        this.#myDB.baseAddressIPV6 = this.read32(18);
-        this.#myDB.indexBaseAddress = this.read32(22);
-        this.#myDB.indexBaseAddressIPV6 = this.read32(26);
-        this.#myDB.productCode = this.read8(30);
+        let len = 64; // 64-byte header
+        let row = this.readRow(len, 1);
+
+        this.#myDB.dbType = this.read8Row(0, row);
+        this.#myDB.dbColumn = this.read8Row(1, row);
+        this.#myDB.dbYear = this.read8Row(2, row);
+        this.#myDB.dbMonth = this.read8Row(3, row);
+        this.#myDB.dbDay = this.read8Row(4, row);
+        this.#myDB.dbCount = this.read32Row(5, row);
+        this.#myDB.baseAddress = this.read32Row(9, row);
+        this.#myDB.dbCountIPV6 = this.read32Row(13, row);
+        this.#myDB.baseAddressIPV6 = this.read32Row(17, row);
+        this.#myDB.indexBaseAddress = this.read32Row(21, row);
+        this.#myDB.indexBaseAddressIPV6 = this.read32Row(25, row);
+        this.#myDB.productCode = this.read8Row(29, row);
         // below 2 fields just read for now, not being used yet
-        this.#myDB.productType = this.read8(31);
-        this.#myDB.fileSize = this.read32(32);
+        this.#myDB.productType = this.read8Row(30, row);
+        this.#myDB.fileSize = this.read32Row(31, row);
 
         // check if is correct BIN (should be 1 for IP2Location BIN file), also checking for zipped file (PK being the first 2 chars)
         if (
@@ -434,20 +463,28 @@ class IP2Location {
         this.#categoryEnabled = CATEGORY_POSITION[dbt] != 0 ? 1 : 0;
 
         if (this.#myDB.indexed == 1) {
-          let pointer = this.#myDB.indexBaseAddress;
+          len = MAX_INDEX;
+          if (this.#myDB.indexedIPV6 == 1) {
+            len += MAX_INDEX;
+          }
+          len *= 8; // 4 bytes for both From/To
+
+          row = this.readRow(len, this.#myDB.indexBaseAddress);
+
+          let pointer = 0;
 
           for (let x = 0; x < MAX_INDEX; x++) {
             this.#indexArrayIPV4[x] = Array(2);
-            this.#indexArrayIPV4[x][0] = this.read32(pointer);
-            this.#indexArrayIPV4[x][1] = this.read32(pointer + 4);
+            this.#indexArrayIPV4[x][0] = this.read32Row(pointer, row);
+            this.#indexArrayIPV4[x][1] = this.read32Row(pointer + 4, row);
             pointer += 8;
           }
 
-          if (this.#myDB.indexBaseAddressIPV6 > 0) {
+          if (this.#myDB.indexedIPV6 == 1) {
             for (let x = 0; x < MAX_INDEX; x++) {
               this.#indexArrayIPV6[x] = Array(2);
-              this.#indexArrayIPV6[x][0] = this.read32(pointer);
-              this.#indexArrayIPV6[x][1] = this.read32(pointer + 4);
+              this.#indexArrayIPV6[x][0] = this.read32Row(pointer, row);
+              this.#indexArrayIPV6[x][1] = this.read32Row(pointer + 4, row);
               pointer += 8;
             }
           }
@@ -509,8 +546,9 @@ class IP2Location {
     let rowOffset2;
     let ipFrom;
     let ipTo;
-    let firstCol;
+    let firstCol = 4; // IP From is 4 bytes
     let row;
+    let fullRow;
 
     if (ipType == 4) {
       MAX_IP_RANGE = MAX_IPV4_RANGE;
@@ -519,9 +557,11 @@ class IP2Location {
       columnSize = this.#ipV4ColumnSize;
       ipNumber = dot2Num(myIP);
 
-      indexAddress = ipNumber >>> 16;
-      low = this.#indexArrayIPV4[indexAddress][0];
-      high = this.#indexArrayIPV4[indexAddress][1];
+      if (this.#myDB.indexed == 1) {
+        indexAddress = ipNumber >>> 16;
+        low = this.#indexArrayIPV4[indexAddress][0];
+        high = this.#indexArrayIPV4[indexAddress][1];
+      }
     } else if (ipType == 6) {
       MAX_IP_RANGE = MAX_IPV6_RANGE;
       high = this.#myDB.dbCountIPV6;
@@ -544,16 +584,20 @@ class IP2Location {
         } else {
           ipNumber = ipNumber.not().and(LAST_32_BITS).toJSNumber();
         }
-        indexAddress = ipNumber >>> 16;
-        low = this.#indexArrayIPV4[indexAddress][0];
-        high = this.#indexArrayIPV4[indexAddress][1];
+        if (this.#myDB.indexed == 1) {
+          indexAddress = ipNumber >>> 16;
+          low = this.#indexArrayIPV4[indexAddress][0];
+          high = this.#indexArrayIPV4[indexAddress][1];
+        }
       } else {
-        indexAddress = ipNumber.shiftRight(112).toJSNumber();
-        low = this.#indexArrayIPV6[indexAddress][0];
-        high = this.#indexArrayIPV6[indexAddress][1];
+        firstCol = 16; // IPv6 is 16 bytes
+        if (this.#myDB.indexedIPV6 == 1) {
+          indexAddress = ipNumber.shiftRight(112).toJSNumber();
+          low = this.#indexArrayIPV6[indexAddress][0];
+          high = this.#indexArrayIPV6[indexAddress][1];
+        }
       }
     }
-
     data.ip = myIP;
     ipNumber = bigInt(ipNumber);
 
@@ -564,12 +608,14 @@ class IP2Location {
     data.ipNo = ipNumber.toString();
 
     while (low <= high) {
-      mid = parseInt((low + high) / 2);
+      mid = Math.trunc((low + high) / 2);
       rowOffset = baseAddress + mid * columnSize;
       rowOffset2 = rowOffset + columnSize;
 
-      ipFrom = this.read32Or128(rowOffset, ipType);
-      ipTo = this.read32Or128(rowOffset2, ipType);
+      // reading IP From + whole row + next IP From
+      fullRow = this.readRow(columnSize + firstCol, rowOffset);
+      ipFrom = this.read32Or128Row(0, fullRow, firstCol);
+      ipTo = this.read32Or128Row(columnSize, fullRow, firstCol);
 
       ipFrom = bigInt(ipFrom);
       ipTo = bigInt(ipTo);
@@ -577,12 +623,8 @@ class IP2Location {
       if (ipFrom.leq(ipNumber) && ipTo.gt(ipNumber)) {
         loadMesg(data, MSG_NOT_SUPPORTED); // load default message
 
-        firstCol = 4;
-        if (ipType == 6) {
-          firstCol = 16;
-        }
-
-        row = this.readRow(columnSize - firstCol, rowOffset + firstCol);
+        let rowLen = columnSize - firstCol;
+        row = fullRow.subarray(firstCol, firstCol + rowLen); // extract the actual row data
 
         if (this.#countryEnabled) {
           if (
