@@ -494,3 +494,36 @@ export class IPTools {
      */
     cidrToIPV6(cidr: string): string[];
 }
+declare class Country {
+    /**
+     * Read the country information CSV file and parse the data.
+     *
+     * @param csvFile The full path to the country information CSV file.
+     */
+    constructor(csvFile: any);
+    /**
+     * Retrieves the country information.
+     *
+     * @param countryCode The country code to get the country information.
+     * @returns The country information.
+     */
+    getCountryInfo(countryCode?: string): Promise<any[]>;
+    #private;
+}
+declare class Region {
+    /**
+     * Read the region information CSV file and parse the data.
+     *
+     * @param csvFile The full path to the region information CSV file.
+     */
+    constructor(csvFile: any);
+    /**
+     * Retrieves the region code for the country code and region name.
+     *
+     * @param countryCode The country code to get the region code.
+     * @param regionName The region name to get the region code.
+     * @returns The region code.
+     */
+    getRegionCode(countryCode?: string, regionName?: string): Promise<any>;
+    #private;
+}

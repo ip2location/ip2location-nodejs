@@ -198,3 +198,49 @@ for (const x of cidr) {
 console.log(tools.cidrToIPV4("10.123.80.0/12"));
 console.log(tools.cidrToIPV6("2002:1234::abcd:ffff:c0a8:101/62"));
 ```
+
+## COUNTRY CLASS
+
+## Methods
+Below are the methods supported in this module.
+
+|Method Name|Description|
+|---|---|
+|getCountryInfo(countryCode)|Returns the country information.|
+
+## Usage
+
+```javascript
+const {Country} = require("ip2location-nodejs");
+
+let country = new Country("./IP2LOCATION-COUNTRY-INFORMATION-BASIC.CSV");
+
+country.getCountryInfo("US").then(country_info => {
+	console.log(country_info);
+});
+
+country.getCountryInfo("").then(country_info => {
+	console.log(country_info);
+});
+```
+
+## REGION CLASS
+
+## Methods
+Below are the methods supported in this module.
+
+|Method Name|Description|
+|---|---|
+|getRegionCode(countryCode, regionName)|Returns the region code for the supplied country code and region name.|
+
+## Usage
+
+```javascript
+const {Region} = require("ip2location-nodejs");
+
+let region = new Region("./IP2LOCATION-ISO3166-2.CSV");
+
+region.getRegionCode("US", "California").then(region_code => {
+	console.log(region_code);
+});
+```

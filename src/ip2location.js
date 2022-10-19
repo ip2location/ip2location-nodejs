@@ -2,9 +2,10 @@ var net = require("net");
 var fs = require("fs");
 var bigInt = require("big-integer");
 var https = require("https");
+const csv = require("csv-parser");
 
 // For BIN queries
-const VERSION = "9.3.1";
+const VERSION = "9.4.1";
 const MAX_INDEX = 65536;
 const COUNTRY_POSITION = [
   0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
@@ -1533,8 +1534,121 @@ class IPTools {
   }
 }
 
+// Country class
+class Country {
+  #fields = Array();
+  #records = {};
+  #fd;
+  #ready = false;
+
+  constructor(csvFile) {
+    if (!fs.existsSync(csvFile)) {
+      throw new Error("The CSV file " + csvFile + " is not found.");
+    }
+    try {
+      fs.createReadStream(csvFile)
+        .pipe(csv(true))
+        .on("data", (data) => {
+          if (data.country_code) {
+            this.#records[data.country_code] = data;
+          } else {
+            throw new Error("Invalid country information CSV file.");
+          }
+        })
+        .on("end", () => {
+          this.#ready = true;
+        });
+    } catch (err) {
+      throw new Error("Unable to read " + csvFile + ".");
+    }
+  }
+
+  // Get country information
+  async getCountryInfo(countryCode = "") {
+    while (!this.#ready) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    countryCode = countryCode.trim();
+    let results = Array();
+    if (Object.keys(this.#records).length === 0) {
+      throw new Error("No record available.");
+    }
+    if (countryCode != "") {
+      if (this.#records[countryCode]) {
+        results.push(this.#records[countryCode]);
+      }
+    } else {
+      for (const elem in this.#records) {
+        results.push(this.#records[elem]);
+      }
+    }
+    return results;
+  }
+}
+
+// Region class
+class Region {
+  #fields = Array();
+  #records = {};
+  #fd;
+  #ready = false;
+
+  constructor(csvFile) {
+    if (!fs.existsSync(csvFile)) {
+      throw new Error("The CSV file " + csvFile + " is not found.");
+    }
+    try {
+      fs.createReadStream(csvFile)
+        .pipe(csv(true))
+        .on("data", (data) => {
+          if (data.subdivision_name) {
+            if (!this.#records[data.country_code]) {
+              this.#records[data.country_code] = Array();
+            }
+            this.#records[data.country_code].push({
+              code: data.code,
+              name: data.subdivision_name,
+            });
+          } else {
+            throw new Error("Invalid region information CSV file.");
+          }
+        })
+        .on("end", () => {
+          this.#ready = true;
+        });
+    } catch (err) {
+      throw new Error("Unable to read " + csvFile + ".");
+    }
+  }
+
+  // Get region code
+  async getRegionCode(countryCode = "", regionName = "") {
+    while (!this.#ready) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    countryCode = countryCode.trim();
+    regionName = regionName.trim();
+    if (Object.keys(this.#records).length === 0) {
+      throw new Error("No record available.");
+    }
+    if (this.#records[countryCode]) {
+      for (let x = 0; x < this.#records[countryCode].length; x++) {
+        let elem = this.#records[countryCode][x];
+        if (regionName.toUpperCase() == elem.name.toUpperCase()) {
+          return elem.code;
+        }
+      }
+      return null;
+    } else {
+      return null;
+    }
+  }
+}
+
 module.exports = {
   IP2Location: IP2Location,
   IP2LocationWebService: IP2LocationWebService,
   IPTools: IPTools,
+  Country: Country,
+  Region: Region,
 };
