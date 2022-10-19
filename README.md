@@ -206,6 +206,7 @@ Below are the methods supported in this module.
 
 |Method Name|Description|
 |---|---|
+|Constructor(csvFile)|Expect a IP2Location Country Information CSV file. This database is free for download at https://www.ip2location.com/free/country-information|
 |getCountryInfo(countryCode)|Returns the country information.|
 
 ## Usage
@@ -231,6 +232,7 @@ Below are the methods supported in this module.
 
 |Method Name|Description|
 |---|---|
+|Constructor(csvFile)|Expect a IP2Location ISO 3166-2 Subdivision Code CSV file. This database is free for download at https://www.ip2location.com/free/iso3166-2|
 |getRegionCode(countryCode, regionName)|Returns the region code for the supplied country code and region name.|
 
 ## Usage

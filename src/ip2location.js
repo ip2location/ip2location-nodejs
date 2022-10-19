@@ -5,7 +5,7 @@ var https = require("https");
 const csv = require("csv-parser");
 
 // For BIN queries
-const VERSION = "9.4.1";
+const VERSION = "9.4.2";
 const MAX_INDEX = 65536;
 const COUNTRY_POSITION = [
   0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
