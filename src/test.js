@@ -2,7 +2,7 @@ const {IP2Location, IP2LocationWebService, IPTools, Country, Region} = require("
 
 let ip2location = new IP2Location();
 
-ip2location.open("./DB25.BIN");
+ip2location.open("./DB26.BIN");
 
 testip = ['2001:0:4136:e378:8000:63bf:f7f7:f7f7', '2002:0803:2200::0803:2200'];
 
@@ -34,6 +34,9 @@ for (var x = 0; x < testip.length; x++) {
 	console.log("usageType: " + ip2location.getUsageType(testip[x]));
 	console.log("addressType: " + ip2location.getAddressType(testip[x]));
 	console.log("category: " + ip2location.getCategory(testip[x]));
+	console.log("district: " + ip2location.getDistrict(testip[x]));
+	console.log("asn: " + ip2location.getASN(testip[x]));
+	console.log("as: " + ip2location.getAS(testip[x]));
 	console.log("==================================================================");
 }
 

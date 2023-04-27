@@ -154,6 +154,9 @@ export class IP2Location {
         usageType: string;
         addressType: string;
         category: string;
+        district: string;
+        asn: string;
+        as: string;
     };
     /**
      * Returns the API version.
@@ -328,6 +331,27 @@ export class IP2Location {
      */
     getCategory(myIP: string): string;
     /**
+     * Returns the district name.
+     *
+     * @param myIP The IP address to query.
+     * @returns The district name.
+     */
+    getDistrict(myIP: string): string;
+    /**
+     * Returns the autonomous system number (ASN).
+     *
+     * @param myIP The IP address to query.
+     * @returns The ASN.
+     */
+    getASN(myIP: string): string;
+    /**
+     * Returns the autonomous system (AS).
+     *
+     * @param myIP The IP address to query.
+     * @returns The AS.
+     */
+    getAS(myIP: string): string;
+    /**
      * Returns all fields.
      *
      * @param myIP The IP address to query.
@@ -358,6 +382,9 @@ export class IP2Location {
         usageType: string;
         addressType: string;
         category: string;
+        district: string;
+        asn: string;
+        as: string;
     };
     #private;
 }

@@ -3,7 +3,7 @@
 
 # IP2Location Node.js Module
 
-This Node.js module provides a fast lookup of country, region, city, latitude, longitude, ZIP code, time zone, ISP, domain name, connection type, IDD code, area code, weather station code, station name, mcc, mnc, mobile brand, elevation, usage type, address type and IAB category from IP address by using IP2Location database. This module uses a file based database available at IP2Location.com. This database simply contains IP blocks as keys, and other information such as country, region, city, latitude, longitude, ZIP code, time zone, ISP, domain name, connection type, IDD code, area code, weather station code, station name, mcc, mnc, mobile brand, elevation, usage type, address type and IAB category as values. It supports both IP address in IPv4 and IPv6.
+This Node.js module provides a fast lookup of country, region, city, latitude, longitude, ZIP code, time zone, ISP, domain name, connection type, IDD code, area code, weather station code, station name, mcc, mnc, mobile brand, elevation, usage type, address type, IAB category, district, autonomous system number (ASN) and autonomous system (AS) from IP address by using IP2Location database. This module uses a file based database available at IP2Location.com. This database simply contains IP blocks as keys, and other information such as country, region, city, latitude, longitude, ZIP code, time zone, ISP, domain name, connection type, IDD code, area code, weather station code, station name, mcc, mnc, mobile brand, elevation, usage type, address type, IAB category, district, autonomous system number (ASN) and autonomous system (AS) as values. It supports both IP address in IPv4 and IPv6.
 
 This module can be used in many types of projects such as:
 
@@ -81,6 +81,9 @@ Below are the methods supported in this module.
 |getUsageType|Returns the usage type.|
 |getAddressType|Returns the address type.|
 |getCategory|Returns the IAB category.|
+|getDistrict|Returns the district name.|
+|getASN|Returns the autonomous system number (ASN).|
+|getAS|Returns the autonomous system (AS).|
 |close|Closes BIN file and resets metadata.|
 
 
@@ -92,7 +95,7 @@ const {IP2Location} = require("ip2location-nodejs");
 
 let ip2location = new IP2Location();
 
-ip2location.open("./DB25.BIN");
+ip2location.open("./DB26.BIN");
 
 testip = ['8.8.8.8', '2404:6800:4001:c01::67'];
 

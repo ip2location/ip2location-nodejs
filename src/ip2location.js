@@ -4,81 +4,103 @@ var https = require("https");
 const csv = require("csv-parser");
 
 // For BIN queries
-const VERSION = "9.4.3";
+const VERSION = "9.5.0";
 const MAX_INDEX = 65536;
 const COUNTRY_POSITION = [
   0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+  2,
 ];
 const REGION_POSITION = [
   0, 0, 0, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+  3,
 ];
 const CITY_POSITION = [
   0, 0, 0, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+  4,
 ];
 const ISP_POSITION = [
   0, 0, 3, 0, 5, 0, 7, 5, 7, 0, 8, 0, 9, 0, 9, 0, 9, 0, 9, 7, 9, 0, 9, 7, 9, 9,
+  9,
 ];
 const LATITUDE_POSITION = [
   0, 0, 0, 0, 0, 5, 5, 0, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+  5,
 ];
 const LONGITUDE_POSITION = [
   0, 0, 0, 0, 0, 6, 6, 0, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
+  6,
 ];
 const DOMAIN_POSITION = [
   0, 0, 0, 0, 0, 0, 0, 6, 8, 0, 9, 0, 10, 0, 10, 0, 10, 0, 10, 8, 10, 0, 10, 8,
-  10, 10,
+  10, 10, 10,
 ];
 const ZIP_CODE_POSITION = [
   0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 7, 7, 7, 0, 7, 7, 7, 0, 7, 0, 7, 7, 7, 0, 7, 7,
+  7,
 ];
 const TIME_ZONE_POSITION = [
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 8, 7, 8, 8, 8, 7, 8, 0, 8, 8, 8, 0, 8, 8,
+  8,
 ];
 const NET_SPEED_POSITION = [
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 11, 0, 11, 8, 11, 0, 11, 0, 11, 0,
-  11, 11,
+  11, 11, 11,
 ];
 const IDD_CODE_POSITION = [
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 12, 0, 12, 0, 12, 9, 12, 0,
-  12, 12,
+  12, 12, 12,
 ];
 const AREA_CODE_POSITION = [
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 13, 0, 13, 0, 13, 10, 13, 0,
-  13, 13,
+  13, 13, 13,
 ];
 const WEATHER_STATION_CODE_POSITION = [
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 14, 0, 14, 0, 14, 0, 14,
-  14,
+  14, 14,
 ];
 const WEATHER_STATION_NAME_POSITION = [
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 15, 0, 15, 0, 15, 0,
-  15, 15,
+  15, 15, 15,
 ];
 const MCC_POSITION = [
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 16, 0, 16, 9, 16,
-  16,
+  16, 16,
 ];
 const MNC_POSITION = [
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 17, 0, 17, 10,
-  17, 17,
+  17, 17, 17,
 ];
 const MOBILE_BRAND_POSITION = [
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 11, 18, 0, 18, 11,
-  18, 18,
+  18, 18, 18,
 ];
 const ELEVATION_POSITION = [
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 11, 19, 0, 19,
-  19,
+  19, 19,
 ];
 const USAGE_TYPE_POSITION = [
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 12, 20,
-  20,
+  20, 20,
 ];
 const ADDRESS_TYPE_POSITION = [
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 21,
+  21,
 ];
 const CATEGORY_POSITION = [
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 22,
+  22,
+];
+const DISTRICT_POSITION = [
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  23,
+];
+const ASN_POSITION = [
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  24,
+];
+const AS_POSITION = [
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  25,
 ];
 const MAX_IPV4_RANGE = BigInt(4294967295);
 const MAX_IPV6_RANGE = BigInt("340282366920938463463374607431768211455");
@@ -111,6 +133,9 @@ const MODES = {
   USAGE_TYPE: 20,
   ADDRESS_TYPE: 21,
   CATEGORY: 22,
+  DISTRICT: 23,
+  ASN: 24,
+  AS: 25,
   ALL: 100,
 };
 const MSG_NOT_SUPPORTED =
@@ -171,6 +196,9 @@ class IP2Location {
   #usageTypePositionOffset = 0;
   #addressTypePositionOffset = 0;
   #categoryPositionOffset = 0;
+  #districtPositionOffset = 0;
+  #asnPositionOffset = 0;
+  #asPositionOffset = 0;
 
   #countryEnabled = 0;
   #regionEnabled = 0;
@@ -193,6 +221,9 @@ class IP2Location {
   #usageTypeEnabled = 0;
   #addressTypeEnabled = 0;
   #categoryEnabled = 0;
+  #districtEnabled = 0;
+  #asnEnabled = 0;
+  #asEnabled = 0;
 
   #myDB = {
     dbType: 0,
@@ -434,6 +465,12 @@ class IP2Location {
             : 0;
         this.#categoryPositionOffset =
           CATEGORY_POSITION[dbt] != 0 ? (CATEGORY_POSITION[dbt] - 2) << 2 : 0;
+        this.#districtPositionOffset =
+          DISTRICT_POSITION[dbt] != 0 ? (DISTRICT_POSITION[dbt] - 2) << 2 : 0;
+        this.#asnPositionOffset =
+          ASN_POSITION[dbt] != 0 ? (ASN_POSITION[dbt] - 2) << 2 : 0;
+        this.#asPositionOffset =
+          AS_POSITION[dbt] != 0 ? (AS_POSITION[dbt] - 2) << 2 : 0;
 
         this.#countryEnabled = COUNTRY_POSITION[dbt] != 0 ? 1 : 0;
         this.#regionEnabled = REGION_POSITION[dbt] != 0 ? 1 : 0;
@@ -458,6 +495,9 @@ class IP2Location {
         this.#usageTypeEnabled = USAGE_TYPE_POSITION[dbt] != 0 ? 1 : 0;
         this.#addressTypeEnabled = ADDRESS_TYPE_POSITION[dbt] != 0 ? 1 : 0;
         this.#categoryEnabled = CATEGORY_POSITION[dbt] != 0 ? 1 : 0;
+        this.#districtEnabled = DISTRICT_POSITION[dbt] != 0 ? 1 : 0;
+        this.#asnEnabled = ASN_POSITION[dbt] != 0 ? 1 : 0;
+        this.#asEnabled = AS_POSITION[dbt] != 0 ? 1 : 0;
 
         if (this.#myDB.indexed == 1) {
           len = MAX_INDEX;
@@ -784,6 +824,25 @@ class IP2Location {
             );
           }
         }
+        if (this.#districtEnabled) {
+          if (mode == MODES.ALL || mode == MODES.DISTRICT) {
+            data.district = this.readStr(
+              this.read32Row(this.#districtPositionOffset, row)
+            );
+          }
+        }
+        if (this.#asnEnabled) {
+          if (mode == MODES.ALL || mode == MODES.ASN) {
+            data.asn = this.readStr(
+              this.read32Row(this.#asnPositionOffset, row)
+            );
+          }
+        }
+        if (this.#asEnabled) {
+          if (mode == MODES.ALL || mode == MODES.AS) {
+            data.as = this.readStr(this.read32Row(this.#asPositionOffset, row));
+          }
+        }
         return;
       } else {
         if (ipFrom > ipNumber) {
@@ -823,6 +882,9 @@ class IP2Location {
       usageType: "?",
       addressType: "?",
       category: "?",
+      district: "?",
+      asn: "?",
+      as: "?",
     };
 
     if (REGEX_IPV4_1_MATCH.test(myIP)) {
@@ -1007,6 +1069,24 @@ class IP2Location {
   getCategory(myIP) {
     let data = this.geoQuery(myIP, MODES.CATEGORY);
     return data.category;
+  }
+
+  // Return a string for the district name
+  getDistrict(myIP) {
+    let data = this.geoQuery(myIP, MODES.DISTRICT);
+    return data.district;
+  }
+
+  // Return a string for the autonomous system number (ASN)
+  getASN(myIP) {
+    let data = this.geoQuery(myIP, MODES.ASN);
+    return data.asn;
+  }
+
+  // Return a string for the autonomous system (AS)
+  getAS(myIP) {
+    let data = this.geoQuery(myIP, MODES.AS);
+    return data.as;
   }
 
   // Return all results
