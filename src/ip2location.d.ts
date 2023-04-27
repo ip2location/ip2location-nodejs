@@ -13,7 +13,7 @@ export class IP2Location {
      * @param readBytes The number of bytes to read.
      * @param position The file offset to start reading.
      * @param readType The data type to convert the bytes to. (Valid values: int8|int32|uint32|float|str|int128)
-     * @param isBigInt Whether to convert to BigInteger object.
+     * @param isBigInt Whether to convert to BigInt.
      * @returns The value of the specified data type.
      */
     readBin(readBytes: number, position: number, readType: string, isBigInt: boolean): any;
@@ -36,7 +36,7 @@ export class IP2Location {
      * Reads unsigned 32-bit integer from file.
      *
      * @param position The file offset to start reading.
-     * @param isBigInt Whether to convert to BigInteger object.
+     * @param isBigInt Whether to convert to BigInt.
      * @returns Unsigned 32-bit integer.
      */
     read32(position: number, isBigInt: boolean): number;
@@ -53,7 +53,7 @@ export class IP2Location {
      *
      * @param position The buffer offset to start reading.
      * @param buffer The buffer containing the data.
-     * @returns BigInteger object.
+     * @returns BigInt.
      */
     read128Row(position: number, buffer: any): any;
     /**
@@ -62,7 +62,7 @@ export class IP2Location {
      * @param position The buffer offset to start reading.
      * @param buffer The buffer containing the data.
      * @param len The number of bytes to read.
-     * @returns BigInteger object or unsigned 32-bit integer.
+     * @returns BigInt or unsigned 32-bit integer.
      */
     read32Or128Row(position: number, buffer: any, len: number): any;
     /**
@@ -70,14 +70,14 @@ export class IP2Location {
      *
      * @param position The file offset to start reading.
      * @param ipType 4 for IPv4 or 6 for IPv6.
-     * @returns BigInteger object or unsigned 32-bit integer.
+     * @returns BigInt or unsigned 32-bit integer.
      */
     read32Or128(position: number, ipType: number): any;
     /**
      * Reads unsigned 128-bit integer from file.
      *
      * @param position The file offset to start reading.
-     * @returns BigInteger object.
+     * @returns BigInt.
      */
     read128(position: number): any;
     /**
@@ -418,7 +418,7 @@ export class IPTools {
      * Converts an IPv6 address to IP number.
      *
      * @param myIP The IP address to convert.
-     * @returns The IP number in a BigInteger object.
+     * @returns The IP number in a BigInt.
      */
     ipV6ToDecimal(myIP: string): any;
     /**
