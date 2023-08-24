@@ -23,7 +23,7 @@ extensions = [
 
 # https://myst-parser.readthedocs.io/en/latest/configuration.html#setting-html-metadata
 myst_html_meta = {
-    "description": "IP2Proxy PHP library enables user to query an IP address if it was being used as open proxy, web proxy, VPN anonymizer and TOR exits.",
+    "description": "IP2Location Node.js module provides a fast lookup of geolocation information from IP address by using IP2Location database.",
     "keywords": "IP2Location, Geolocation, IP location",
     "google-site-verification": "DeW6mXDyMnMt4i61ZJBNuoADPimo5266DKob7Z7d6i4",
 }
