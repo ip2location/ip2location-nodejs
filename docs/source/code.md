@@ -1,4 +1,4 @@
-# IP2Location Ruby API
+# IP2Location Node.js API
 
 ## IP2Location Class
 
