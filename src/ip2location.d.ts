@@ -8,6 +8,14 @@ export class IP2Location {
      */
     readRow(readBytes: number, position: number): any;
     /**
+     * Reads bytes from file into buffer asynchronously.
+     *
+     * @param readBytes The number of bytes to read.
+     * @param position The file offset to start reading.
+     * @returns The promise of the buffer containing the read bytes.
+     */
+    readRowAsync(readBytes: number, position: number): Promise<any>;
+    /**
      * Reads bytes from file and convert to specified data type.
      *
      * @param readBytes The number of bytes to read.
@@ -96,17 +104,36 @@ export class IP2Location {
      */
     readStr(position: number): string;
     /**
+     * Reads string from file asynchronously.
+     *
+     * @param position The file offset to start reading.
+     * @returns The promise of the string.
+     */
+    readStrAsync(position: number): Promise<string>;
+    /**
      * Reads BIN file metadata.
      *
      * @returns Whether metadata read successfully.
      */
     loadBin(): boolean;
     /**
+     * Reads BIN file metadata asynchronously.
+     *
+     * @returns The promise of whether metadata read successfully.
+     */
+    loadBinAsync(): Promise<boolean>;
+    /**
      * Initializes with BIN file path and pre-loads metadata.
      *
      * @param binPath The path to the BIN file.
      */
     open(binPath: string): void;
+    /**
+     * Initializes with BIN file path and pre-loads metadata asynchronously.
+     *
+     * @param binPath The path to the BIN file.
+     */
+    openAsync(binPath: string): Promise<void>;
     /**
      * Resets metadata and closes file handle.
      *
@@ -122,6 +149,15 @@ export class IP2Location {
      * @param mode The fields to read.
      */
     geoQueryData(myIP: string, ipType: number, data: any, mode: any): void;
+    /**
+     * Retrieves geolocation data into supplied object asynchronously.
+     *
+     * @param myIP The IP address to query.
+     * @param ipType 4 for IPv4 or 6 for IPv6.
+     * @param data The object to store the results.
+     * @param mode The fields to read.
+     */
+    geoQueryDataAsync(myIP: string, ipType: number, data: any, mode: any): Promise<void>;
     /**
      * Performs validations and returns geolocation data.
      *
@@ -159,6 +195,42 @@ export class IP2Location {
         as: string;
     };
     /**
+     * Performs validations and returns geolocation data asynchronously.
+     *
+     * @param myIP The IP address to query.
+     * @param mode The fields to read.
+     * @returns The promise of the geolocation data.
+     */
+    geoQueryAsync(myIP: string, mode: any): Promise<{
+        ip: string;
+        ipNo: string;
+        countryShort: string;
+        countryLong: string;
+        region: string;
+        city: string;
+        isp: string;
+        domain: string;
+        zipCode: string;
+        latitude: string;
+        longitude: string;
+        timeZone: string;
+        netSpeed: string;
+        iddCode: string;
+        areaCode: string;
+        weatherStationCode: string;
+        weatherStationName: string;
+        mcc: string;
+        mnc: string;
+        mobileBrand: string;
+        elevation: string;
+        usageType: string;
+        addressType: string;
+        category: string;
+        district: string;
+        asn: string;
+        as: string;
+    }>;
+    /**
      * Returns the API version.
      *
      * @returns The API version.
@@ -184,12 +256,26 @@ export class IP2Location {
      */
     getCountryShort(myIP: string): string;
     /**
+     * Returns the ISO 3166 country code asynchronously.
+     *
+     * @param myIP The IP address to query.
+     * @returns The promise of the country code.
+     */
+    getCountryShortAsync(myIP: string): Promise<string>;
+    /**
      * Returns the country name.
      *
      * @param myIP The IP address to query.
      * @returns The country name.
      */
     getCountryLong(myIP: string): string;
+    /**
+     * Returns the country name asynchronously.
+     *
+     * @param myIP The IP address to query.
+     * @returns The promise of the country name.
+     */
+    getCountryLongAsync(myIP: string): Promise<string>;
     /**
      * Returns the region or state.
      *
@@ -198,12 +284,26 @@ export class IP2Location {
      */
     getRegion(myIP: string): string;
     /**
+     * Returns the region or state asynchronously.
+     *
+     * @param myIP The IP address to query.
+     * @returns The promise of the region or state.
+     */
+    getRegionAsync(myIP: string): Promise<string>;
+    /**
      * Returns the city.
      *
      * @param myIP The IP address to query.
      * @returns The city.
      */
     getCity(myIP: string): string;
+    /**
+     * Returns the city asynchronously.
+     *
+     * @param myIP The IP address to query.
+     * @returns The promise of the city.
+     */
+    getCityAsync(myIP: string): Promise<string>;
     /**
      * Returns the Internet Service Provider.
      *
@@ -212,12 +312,26 @@ export class IP2Location {
      */
     getISP(myIP: string): string;
     /**
+     * Returns the Internet Service Provider asynchronously.
+     *
+     * @param myIP The IP address to query.
+     * @returns The promise of the ISP.
+     */
+    getISPAsync(myIP: string): Promise<string>;
+    /**
      * Returns the latitude.
      *
      * @param myIP The IP address to query.
      * @returns The latitude.
      */
     getLatitude(myIP: string): string;
+    /**
+     * Returns the latitude asynchronously.
+     *
+     * @param myIP The IP address to query.
+     * @returns The promise of the latitude.
+     */
+    getLatitudeAsync(myIP: string): Promise<string>;
     /**
      * Returns the longitude.
      *
@@ -226,12 +340,26 @@ export class IP2Location {
      */
     getLongitude(myIP: string): string;
     /**
+     * Returns the longitude asynchronously.
+     *
+     * @param myIP The IP address to query.
+     * @returns The promise of the longitude.
+     */
+    getLongitudeAsync(myIP: string): Promise<string>;
+    /**
      * Returns the domain name.
      *
      * @param myIP The IP address to query.
      * @returns The domain name.
      */
     getDomain(myIP: string): string;
+    /**
+     * Returns the domain name asynchronously.
+     *
+     * @param myIP The IP address to query.
+     * @returns The promise of the domain name.
+     */
+    getDomainAsync(myIP: string): Promise<string>;
     /**
      * Returns the ZIP or postal code.
      *
@@ -240,12 +368,26 @@ export class IP2Location {
      */
     getZIPCode(myIP: string): string;
     /**
+     * Returns the ZIP or postal code asynchronously.
+     *
+     * @param myIP The IP address to query.
+     * @returns The promise of the ZIP code.
+     */
+    getZIPCodeAsync(myIP: string): Promise<string>;
+    /**
      * Returns the time zone.
      *
      * @param myIP The IP address to query.
      * @returns The time zone.
      */
     getTimeZone(myIP: string): string;
+    /**
+     * Returns the time zone asynchronously.
+     *
+     * @param myIP The IP address to query.
+     * @returns The promise of the time zone.
+     */
+    getTimeZoneAsync(myIP: string): Promise<string>;
     /**
      * Returns the internet connection type.
      *
@@ -254,12 +396,26 @@ export class IP2Location {
      */
     getNetSpeed(myIP: string): string;
     /**
+     * Returns the internet connection type asynchronously.
+     *
+     * @param myIP The IP address to query.
+     * @returns The promise of the internet connection type.
+     */
+    getNetSpeedAsync(myIP: string): Promise<string>;
+    /**
      * Returns the IDD code.
      *
      * @param myIP The IP address to query.
      * @returns The IDD code.
      */
     getIDDCode(myIP: string): string;
+    /**
+     * Returns the IDD code asynchronously.
+     *
+     * @param myIP The IP address to query.
+     * @returns The promise of the IDD code.
+     */
+    getIDDCodeAsync(myIP: string): Promise<string>;
     /**
      * Returns the area code.
      *
@@ -268,12 +424,26 @@ export class IP2Location {
      */
     getAreaCode(myIP: string): string;
     /**
+     * Returns the area code asynchronously.
+     *
+     * @param myIP The IP address to query.
+     * @returns The promise of the area code.
+     */
+    getAreaCodeAsync(myIP: string): Promise<string>;
+    /**
      * Returns the weather station code.
      *
      * @param myIP The IP address to query.
      * @returns The weather station code.
      */
     getWeatherStationCode(myIP: string): string;
+    /**
+     * Returns the weather station code asynchronously.
+     *
+     * @param myIP The IP address to query.
+     * @returns The promise of the weather station code.
+     */
+    getWeatherStationCodeAsync(myIP: string): Promise<string>;
     /**
      * Returns the weather station name.
      *
@@ -282,12 +452,26 @@ export class IP2Location {
      */
     getWeatherStationName(myIP: string): string;
     /**
+     * Returns the weather station name asynchronously.
+     *
+     * @param myIP The IP address to query.
+     * @returns The promise of the weather station name.
+     */
+    getWeatherStationNameAsync(myIP: string): Promise<string>;
+    /**
      * Returns the Mobile Country Code.
      *
      * @param myIP The IP address to query.
      * @returns The MCC.
      */
     getMCC(myIP: string): string;
+    /**
+     * Returns the Mobile Country Code asynchronously.
+     *
+     * @param myIP The IP address to query.
+     * @returns The promise of the MCC.
+     */
+    getMCCAsync(myIP: string): Promise<string>;
     /**
      * Returns the Mobile Network Code.
      *
@@ -296,12 +480,26 @@ export class IP2Location {
      */
     getMNC(myIP: string): string;
     /**
+     * Returns the Mobile Network Code asynchronously.
+     *
+     * @param myIP The IP address to query.
+     * @returns The promise of the MNC.
+     */
+    getMNCAsync(myIP: string): Promise<string>;
+    /**
      * Returns the mobile brand.
      *
      * @param myIP The IP address to query.
      * @returns The mobile brand.
      */
     getMobileBrand(myIP: string): string;
+    /**
+     * Returns the mobile brand asynchronously.
+     *
+     * @param myIP The IP address to query.
+     * @returns The promise of the mobile brand.
+     */
+    getMobileBrandAsync(myIP: string): Promise<string>;
     /**
      * Returns the elevation above sea level in meters.
      *
@@ -310,12 +508,26 @@ export class IP2Location {
      */
     getElevation(myIP: string): string;
     /**
+     * Returns the elevation above sea level in meters asynchronously.
+     *
+     * @param myIP The IP address to query.
+     * @returns The promise of the elevation.
+     */
+    getElevationAsync(myIP: string): Promise<string>;
+    /**
      * Returns the usage type.
      *
      * @param myIP The IP address to query.
      * @returns The usage type.
      */
     getUsageType(myIP: string): string;
+    /**
+     * Returns the usage type asynchronously.
+     *
+     * @param myIP The IP address to query.
+     * @returns The promise of the usage type.
+     */
+    getUsageTypeAsync(myIP: string): Promise<string>;
     /**
      * Returns the address type.
      *
@@ -324,12 +536,26 @@ export class IP2Location {
      */
     getAddressType(myIP: string): string;
     /**
+     * Returns the address type asynchronously.
+     *
+     * @param myIP The IP address to query.
+     * @returns The promise of the address type.
+     */
+    getAddressTypeAsync(myIP: string): Promise<string>;
+    /**
      * Returns the IAB category.
      *
      * @param myIP The IP address to query.
      * @returns The IAB category.
      */
     getCategory(myIP: string): string;
+    /**
+     * Returns the IAB category asynchronously.
+     *
+     * @param myIP The IP address to query.
+     * @returns The promise of the IAB category.
+     */
+    getCategoryAsync(myIP: string): Promise<string>;
     /**
      * Returns the district name.
      *
@@ -338,6 +564,13 @@ export class IP2Location {
      */
     getDistrict(myIP: string): string;
     /**
+     * Returns the district name asynchronously.
+     *
+     * @param myIP The IP address to query.
+     * @returns The promise of the district name.
+     */
+    getDistrictAsync(myIP: string): Promise<string>;
+    /**
      * Returns the autonomous system number (ASN).
      *
      * @param myIP The IP address to query.
@@ -345,12 +578,26 @@ export class IP2Location {
      */
     getASN(myIP: string): string;
     /**
+     * Returns the autonomous system number (ASN) asynchronously.
+     *
+     * @param myIP The IP address to query.
+     * @returns The promise of the ASN.
+     */
+    getASNAsync(myIP: string): Promise<string>;
+    /**
      * Returns the autonomous system (AS).
      *
      * @param myIP The IP address to query.
      * @returns The AS.
      */
     getAS(myIP: string): string;
+    /**
+     * Returns the autonomous system (AS) asynchronously.
+     *
+     * @param myIP The IP address to query.
+     * @returns The promise of the AS.
+     */
+    getASAsync(myIP: string): Promise<string>;
     /**
      * Returns all fields.
      *
@@ -386,6 +633,41 @@ export class IP2Location {
         asn: string;
         as: string;
     };
+    /**
+     * Returns all fields asynchronously.
+     *
+     * @param myIP The IP address to query.
+     * @returns The promise of all geolocation fields.
+     */
+    getAllAsync(myIP: string): Promise<{
+        ip: string;
+        ipNo: string;
+        countryShort: string;
+        countryLong: string;
+        region: string;
+        city: string;
+        isp: string;
+        domain: string;
+        zipCode: string;
+        latitude: string;
+        longitude: string;
+        timeZone: string;
+        netSpeed: string;
+        iddCode: string;
+        areaCode: string;
+        weatherStationCode: string;
+        weatherStationName: string;
+        mcc: string;
+        mnc: string;
+        mobileBrand: string;
+        elevation: string;
+        usageType: string;
+        addressType: string;
+        category: string;
+        district: string;
+        asn: string;
+        as: string;
+    }>;
     #private;
 }
 export class IP2LocationWebService {

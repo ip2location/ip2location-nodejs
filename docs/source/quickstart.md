@@ -52,6 +52,30 @@ for (var x = 0; x < testip.length; x++) {
 ip2location.close();
 ```
 
+### Query geolocation information from BIN database asynchronously
+
+You can asynchronously query the geolocation information from the IP2Location BIN database as below:
+
+```javascript
+
+const {IP2Location} = require("ip2location-nodejs");
+
+let ip2location = new IP2Location();
+
+testip = ['8.8.8.8', '2404:6800:4001:c01::67'];
+
+ip2location.openAsync("./DB26.BIN").then(() => {
+	for (var x = 0; x < testip.length; x++) {
+		ip2location.getAllAsync(testip[x]).then(result => {
+			for (var key in result) {
+				console.log(key + ": " + result[key]);
+			}
+			console.log("--------------------------------------------------------------");
+		});
+	}
+});
+```
+
 ### Processing IP address using IP Tools class
 
 You can manupulate IP address, IP number and CIDR as below:

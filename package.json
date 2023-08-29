@@ -1,6 +1,6 @@
 {
 	"name": "ip2location-nodejs",
-	"version": "9.5.0",
+	"version": "9.6.0",
 	"description": "IP2Location geolocation component",
 	"keywords": [
 		"ip2location",

@@ -1,10 +1,11 @@
-var net = require("net");
-var fs = require("fs");
-var https = require("https");
+const net = require("net");
+const fs = require("fs");
+const fsp = fs.promises;
+const https = require("https");
 const csv = require("csv-parser");
 
 // For BIN queries
-const VERSION = "9.5.0";
+const VERSION = "9.6.0";
 const MAX_INDEX = 65536;
 const COUNTRY_POSITION = [
   0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
@@ -167,6 +168,19 @@ const REGEX_IPV6_BIN_MATCH = /[01]{1,128}/;
 const REGEX_IPV4_PREFIX_MATCH = /^[0-9]{1,2}$/;
 const REGEX_IPV6_PREFIX_MATCH = /^[0-9]{1,3}$/;
 
+// Promise for fs.read since not provided by Node.js
+const readPromise = (...args) => {
+  return new Promise((resolve, reject) => {
+    fs.read(...args, (err, bytesRead, buffer) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve({ bytesRead: bytesRead, buffer: buffer });
+      }
+    });
+  });
+};
+
 // BIN query class
 class IP2Location {
   #binFile = "";
@@ -251,6 +265,18 @@ class IP2Location {
   readRow(readBytes, position) {
     let buffer = new Buffer.alloc(readBytes);
     let totalRead = fs.readSync(this.#fd, buffer, 0, readBytes, position - 1);
+    return buffer;
+  }
+
+  // Read row data async
+  async readRowAsync(readBytes, position) {
+    let buffer = new Buffer.alloc(readBytes);
+    var data;
+    try {
+      data = await readPromise(this.#fd, buffer, 0, readBytes, position - 1);
+    } catch (e) {
+      console.error(e);
+    }
     return buffer;
   }
 
@@ -361,6 +387,14 @@ class IP2Location {
   readStr(position) {
     let readBytes = 256; // max size of string field + 1 byte for the length
     let row = this.readRow(readBytes, position + 1);
+    let len = this.read8Row(0, row);
+    return row.toString("utf8", 1, len + 1);
+  }
+
+  // Read strings in the database async
+  async readStrAsync(position) {
+    let readBytes = 256; // max size of string field + 1 byte for the length
+    let row = await this.readRowAsync(readBytes, position + 1);
     let len = this.read8Row(0, row);
     return row.toString("utf8", 1, len + 1);
   }
@@ -534,6 +568,176 @@ class IP2Location {
     return loadOK;
   }
 
+  // Read metadata and indexes async
+  async loadBinAsync() {
+    let loadOK = false;
+
+    try {
+      if (this.#binFile && this.#binFile != "") {
+        let fh = await fsp.open(this.#binFile, "r");
+        this.#fd = fh.fd;
+
+        let len = 64; // 64-byte header
+        let row = await this.readRowAsync(len, 1);
+
+        this.#myDB.dbType = this.read8Row(0, row);
+        this.#myDB.dbColumn = this.read8Row(1, row);
+        this.#myDB.dbYear = this.read8Row(2, row);
+        this.#myDB.dbMonth = this.read8Row(3, row);
+        this.#myDB.dbDay = this.read8Row(4, row);
+        this.#myDB.dbCount = this.read32Row(5, row);
+        this.#myDB.baseAddress = this.read32Row(9, row);
+        this.#myDB.dbCountIPV6 = this.read32Row(13, row);
+        this.#myDB.baseAddressIPV6 = this.read32Row(17, row);
+        this.#myDB.indexBaseAddress = this.read32Row(21, row);
+        this.#myDB.indexBaseAddressIPV6 = this.read32Row(25, row);
+        this.#myDB.productCode = this.read8Row(29, row);
+        // below 2 fields just read for now, not being used yet
+        this.#myDB.productType = this.read8Row(30, row);
+        this.#myDB.fileSize = this.read32Row(31, row);
+
+        // check if is correct BIN (should be 1 for IP2Location BIN file), also checking for zipped file (PK being the first 2 chars)
+        if (
+          (this.#myDB.productCode != 1 && this.#myDB.dbYear >= 21) ||
+          (this.#myDB.dbType == 80 && this.#myDB.dbColumn == 75)
+        ) {
+          // only BINs from Jan 2021 onwards have this byte set
+          throw new Error(MSG_INVALID_BIN);
+        }
+        if (this.#myDB.indexBaseAddress > 0) {
+          this.#myDB.indexed = 1;
+        }
+
+        if (this.#myDB.dbCountIPV6 > 0 && this.#myDB.indexBaseAddressIPV6 > 0) {
+          this.#myDB.indexedIPV6 = 1;
+        }
+
+        this.#ipV4ColumnSize = this.#myDB.dbColumn << 2; // 4 bytes each column
+        this.#ipV6ColumnSize = 16 + ((this.#myDB.dbColumn - 1) << 2); // 4 bytes each column, except IPFrom column which is 16 bytes
+
+        let dbt = this.#myDB.dbType;
+
+        this.#countryPositionOffset =
+          COUNTRY_POSITION[dbt] != 0 ? (COUNTRY_POSITION[dbt] - 2) << 2 : 0;
+        this.#regionPositionOffset =
+          REGION_POSITION[dbt] != 0 ? (REGION_POSITION[dbt] - 2) << 2 : 0;
+        this.#cityPositionOffset =
+          CITY_POSITION[dbt] != 0 ? (CITY_POSITION[dbt] - 2) << 2 : 0;
+        this.#ispPositionOffset =
+          ISP_POSITION[dbt] != 0 ? (ISP_POSITION[dbt] - 2) << 2 : 0;
+        this.#domainPositionOffset =
+          DOMAIN_POSITION[dbt] != 0 ? (DOMAIN_POSITION[dbt] - 2) << 2 : 0;
+        this.#zipCodePositionOffset =
+          ZIP_CODE_POSITION[dbt] != 0 ? (ZIP_CODE_POSITION[dbt] - 2) << 2 : 0;
+        this.#latitudePositionOffset =
+          LATITUDE_POSITION[dbt] != 0 ? (LATITUDE_POSITION[dbt] - 2) << 2 : 0;
+        this.#longitudePositionOffset =
+          LONGITUDE_POSITION[dbt] != 0 ? (LONGITUDE_POSITION[dbt] - 2) << 2 : 0;
+        this.#timeZonePositionOffset =
+          TIME_ZONE_POSITION[dbt] != 0 ? (TIME_ZONE_POSITION[dbt] - 2) << 2 : 0;
+        this.#netSpeedPositionOffset =
+          NET_SPEED_POSITION[dbt] != 0 ? (NET_SPEED_POSITION[dbt] - 2) << 2 : 0;
+        this.#iddCodePositionOffset =
+          IDD_CODE_POSITION[dbt] != 0 ? (IDD_CODE_POSITION[dbt] - 2) << 2 : 0;
+        this.#areaCodePositionOffset =
+          AREA_CODE_POSITION[dbt] != 0 ? (AREA_CODE_POSITION[dbt] - 2) << 2 : 0;
+        this.#weatherStationCodePositionOffset =
+          WEATHER_STATION_CODE_POSITION[dbt] != 0
+            ? (WEATHER_STATION_CODE_POSITION[dbt] - 2) << 2
+            : 0;
+        this.#weatherStationNamePositionOffset =
+          WEATHER_STATION_NAME_POSITION[dbt] != 0
+            ? (WEATHER_STATION_NAME_POSITION[dbt] - 2) << 2
+            : 0;
+        this.#mccPositionOffset =
+          MCC_POSITION[dbt] != 0 ? (MCC_POSITION[dbt] - 2) << 2 : 0;
+        this.#mncPositionOffset =
+          MNC_POSITION[dbt] != 0 ? (MNC_POSITION[dbt] - 2) << 2 : 0;
+        this.#mobileBrandPositionOffset =
+          MOBILE_BRAND_POSITION[dbt] != 0
+            ? (MOBILE_BRAND_POSITION[dbt] - 2) << 2
+            : 0;
+        this.#elevationPositionOffset =
+          ELEVATION_POSITION[dbt] != 0 ? (ELEVATION_POSITION[dbt] - 2) << 2 : 0;
+        this.#usageTypePositionOffset =
+          USAGE_TYPE_POSITION[dbt] != 0
+            ? (USAGE_TYPE_POSITION[dbt] - 2) << 2
+            : 0;
+        this.#addressTypePositionOffset =
+          ADDRESS_TYPE_POSITION[dbt] != 0
+            ? (ADDRESS_TYPE_POSITION[dbt] - 2) << 2
+            : 0;
+        this.#categoryPositionOffset =
+          CATEGORY_POSITION[dbt] != 0 ? (CATEGORY_POSITION[dbt] - 2) << 2 : 0;
+        this.#districtPositionOffset =
+          DISTRICT_POSITION[dbt] != 0 ? (DISTRICT_POSITION[dbt] - 2) << 2 : 0;
+        this.#asnPositionOffset =
+          ASN_POSITION[dbt] != 0 ? (ASN_POSITION[dbt] - 2) << 2 : 0;
+        this.#asPositionOffset =
+          AS_POSITION[dbt] != 0 ? (AS_POSITION[dbt] - 2) << 2 : 0;
+
+        this.#countryEnabled = COUNTRY_POSITION[dbt] != 0 ? 1 : 0;
+        this.#regionEnabled = REGION_POSITION[dbt] != 0 ? 1 : 0;
+        this.#cityEnabled = CITY_POSITION[dbt] != 0 ? 1 : 0;
+        this.#ispEnabled = ISP_POSITION[dbt] != 0 ? 1 : 0;
+        this.#latitudeEnabled = LATITUDE_POSITION[dbt] != 0 ? 1 : 0;
+        this.#longitudeEnabled = LONGITUDE_POSITION[dbt] != 0 ? 1 : 0;
+        this.#domainEnabled = DOMAIN_POSITION[dbt] != 0 ? 1 : 0;
+        this.#zipCodeEnabled = ZIP_CODE_POSITION[dbt] != 0 ? 1 : 0;
+        this.#timeZoneEnabled = TIME_ZONE_POSITION[dbt] != 0 ? 1 : 0;
+        this.#netSpeedEnabled = NET_SPEED_POSITION[dbt] != 0 ? 1 : 0;
+        this.#iddCodeEnabled = IDD_CODE_POSITION[dbt] != 0 ? 1 : 0;
+        this.#areaCodeEnabled = AREA_CODE_POSITION[dbt] != 0 ? 1 : 0;
+        this.#weatherStationCodeEnabled =
+          WEATHER_STATION_CODE_POSITION[dbt] != 0 ? 1 : 0;
+        this.#weatherStationNameEnabled =
+          WEATHER_STATION_NAME_POSITION[dbt] != 0 ? 1 : 0;
+        this.#mccEnabled = MCC_POSITION[dbt] != 0 ? 1 : 0;
+        this.#mncEnabled = MNC_POSITION[dbt] != 0 ? 1 : 0;
+        this.#mobileBrandEnabled = MOBILE_BRAND_POSITION[dbt] != 0 ? 1 : 0;
+        this.#elevationEnabled = ELEVATION_POSITION[dbt] != 0 ? 1 : 0;
+        this.#usageTypeEnabled = USAGE_TYPE_POSITION[dbt] != 0 ? 1 : 0;
+        this.#addressTypeEnabled = ADDRESS_TYPE_POSITION[dbt] != 0 ? 1 : 0;
+        this.#categoryEnabled = CATEGORY_POSITION[dbt] != 0 ? 1 : 0;
+        this.#districtEnabled = DISTRICT_POSITION[dbt] != 0 ? 1 : 0;
+        this.#asnEnabled = ASN_POSITION[dbt] != 0 ? 1 : 0;
+        this.#asEnabled = AS_POSITION[dbt] != 0 ? 1 : 0;
+
+        if (this.#myDB.indexed == 1) {
+          len = MAX_INDEX;
+          if (this.#myDB.indexedIPV6 == 1) {
+            len += MAX_INDEX;
+          }
+          len *= 8; // 4 bytes for both From/To
+
+          row = await this.readRowAsync(len, this.#myDB.indexBaseAddress);
+
+          let pointer = 0;
+
+          for (let x = 0; x < MAX_INDEX; x++) {
+            this.#indexArrayIPV4[x] = Array(2);
+            this.#indexArrayIPV4[x][0] = this.read32Row(pointer, row);
+            this.#indexArrayIPV4[x][1] = this.read32Row(pointer + 4, row);
+            pointer += 8;
+          }
+
+          if (this.#myDB.indexedIPV6 == 1) {
+            for (let x = 0; x < MAX_INDEX; x++) {
+              this.#indexArrayIPV6[x] = Array(2);
+              this.#indexArrayIPV6[x][0] = this.read32Row(pointer, row);
+              this.#indexArrayIPV6[x][1] = this.read32Row(pointer + 4, row);
+              pointer += 8;
+            }
+          }
+        }
+        loadOK = true;
+      }
+    } catch (err) {
+      // do nothing for now
+    }
+    return loadOK;
+  }
+
   // Initialize the module with the path to the IP2Location BIN file
   open(binPath) {
     if (this.#myDB.dbType == 0) {
@@ -542,7 +746,15 @@ class IP2Location {
     }
   }
 
-  // Reset everything
+  // Initialize the module with the path to the IP2Location BIN file async
+  async openAsync(binPath) {
+    if (this.#myDB.dbType == 0) {
+      this.#binFile = binPath;
+      await this.loadBinAsync();
+    }
+  }
+
+  // Reset everything (do not use in async case due to race conditions)
   close() {
     try {
       this.#myDB.baseAddress = 0;
@@ -855,6 +1067,295 @@ class IP2Location {
     loadMesg(data, MSG_INVALID_IP);
   }
 
+  // Search BIN for the data async
+  async geoQueryDataAsync(myIP, ipType, data, mode) {
+    let MAX_IP_RANGE;
+    let low;
+    let mid;
+    let high;
+    let countryPosition;
+    let baseAddress;
+    let columnSize;
+    let ipNumber;
+    let indexAddress;
+    let rowOffset;
+    let rowOffset2;
+    let ipFrom;
+    let ipTo;
+    let firstCol = 4; // IP From is 4 bytes
+    let row;
+    let fullRow;
+
+    if (ipType == 4) {
+      MAX_IP_RANGE = MAX_IPV4_RANGE;
+      high = this.#myDB.dbCount;
+      baseAddress = this.#myDB.baseAddress;
+      columnSize = this.#ipV4ColumnSize;
+      ipNumber = dot2Num(myIP);
+
+      if (this.#myDB.indexed == 1) {
+        indexAddress = ipNumber >>> 16;
+        low = this.#indexArrayIPV4[indexAddress][0];
+        high = this.#indexArrayIPV4[indexAddress][1];
+      }
+    } else if (ipType == 6) {
+      MAX_IP_RANGE = MAX_IPV6_RANGE;
+      high = this.#myDB.dbCountIPV6;
+      baseAddress = this.#myDB.baseAddressIPV6;
+      columnSize = this.#ipV6ColumnSize;
+      ipNumber = ip2No(myIP);
+
+      if (
+        (ipNumber >= FROM_6TO4 && ipNumber <= TO_6TO4) ||
+        (ipNumber >= FROM_TEREDO && ipNumber <= TO_TEREDO)
+      ) {
+        ipType = 4;
+        MAX_IP_RANGE = MAX_IPV4_RANGE;
+        high = this.#myDB.dbCount;
+        baseAddress = this.#myDB.baseAddress;
+        columnSize = this.#ipV4ColumnSize;
+
+        if (ipNumber >= FROM_6TO4 && ipNumber <= TO_6TO4) {
+          ipNumber = Number((ipNumber >> BigInt(80)) & LAST_32_BITS);
+        } else {
+          ipNumber = Number(~ipNumber & LAST_32_BITS);
+        }
+        if (this.#myDB.indexed == 1) {
+          indexAddress = ipNumber >>> 16;
+          low = this.#indexArrayIPV4[indexAddress][0];
+          high = this.#indexArrayIPV4[indexAddress][1];
+        }
+      } else {
+        firstCol = 16; // IPv6 is 16 bytes
+        if (this.#myDB.indexedIPV6 == 1) {
+          indexAddress = Number(ipNumber >> BigInt(112));
+          low = this.#indexArrayIPV6[indexAddress][0];
+          high = this.#indexArrayIPV6[indexAddress][1];
+        }
+      }
+    }
+    data.ip = myIP;
+    ipNumber = BigInt(ipNumber);
+
+    if (ipNumber >= MAX_IP_RANGE) {
+      ipNumber = MAX_IP_RANGE - BigInt(1);
+    }
+
+    data.ipNo = ipNumber.toString();
+
+    while (low <= high) {
+      mid = Math.trunc((low + high) / 2);
+      rowOffset = baseAddress + mid * columnSize;
+      rowOffset2 = rowOffset + columnSize;
+
+      // reading IP From + whole row + next IP From
+      fullRow = await this.readRowAsync(columnSize + firstCol, rowOffset);
+      ipFrom = this.read32Or128Row(0, fullRow, firstCol);
+      ipTo = this.read32Or128Row(columnSize, fullRow, firstCol);
+
+      ipFrom = BigInt(ipFrom);
+      ipTo = BigInt(ipTo);
+
+      if (ipFrom <= ipNumber && ipTo > ipNumber) {
+        loadMesg(data, MSG_NOT_SUPPORTED); // load default message
+
+        let rowLen = columnSize - firstCol;
+        row = fullRow.subarray(firstCol, firstCol + rowLen); // extract the actual row data
+
+        if (this.#countryEnabled) {
+          if (
+            mode == MODES.ALL ||
+            mode == MODES.COUNTRY_SHORT ||
+            mode == MODES.COUNTRY_LONG
+          ) {
+            countryPosition = this.read32Row(this.#countryPositionOffset, row);
+          }
+          if (mode == MODES.ALL || mode == MODES.COUNTRY_SHORT) {
+            data.countryShort = await this.readStrAsync(countryPosition);
+          }
+          if (mode == MODES.ALL || mode == MODES.COUNTRY_LONG) {
+            data.countryLong = await this.readStrAsync(countryPosition + 3);
+          }
+        }
+
+        if (this.#regionEnabled) {
+          if (mode == MODES.ALL || mode == MODES.REGION) {
+            data.region = await this.readStrAsync(
+              this.read32Row(this.#regionPositionOffset, row)
+            );
+          }
+        }
+
+        if (this.#cityEnabled) {
+          if (mode == MODES.ALL || mode == MODES.CITY) {
+            data.city = await this.readStrAsync(
+              this.read32Row(this.#cityPositionOffset, row)
+            );
+          }
+        }
+        if (this.#ispEnabled) {
+          if (mode == MODES.ALL || mode == MODES.ISP) {
+            data.isp = await this.readStrAsync(
+              this.read32Row(this.#ispPositionOffset, row)
+            );
+          }
+        }
+        if (this.#domainEnabled) {
+          if (mode == MODES.ALL || mode == MODES.DOMAIN) {
+            data.domain = await this.readStrAsync(
+              this.read32Row(this.#domainPositionOffset, row)
+            );
+          }
+        }
+        if (this.#zipCodeEnabled) {
+          if (mode == MODES.ALL || mode == MODES.ZIP_CODE) {
+            data.zipCode = await this.readStrAsync(
+              this.read32Row(this.#zipCodePositionOffset, row)
+            );
+          }
+        }
+        if (this.#latitudeEnabled) {
+          if (mode == MODES.ALL || mode == MODES.LATITUDE) {
+            data.latitude =
+              Math.round(
+                this.readFloatRow(this.#latitudePositionOffset, row) * 1000000,
+                6
+              ) / 1000000;
+          }
+        }
+        if (this.#longitudeEnabled) {
+          if (mode == MODES.ALL || mode == MODES.LONGITUDE) {
+            data.longitude =
+              Math.round(
+                this.readFloatRow(this.#longitudePositionOffset, row) * 1000000,
+                6
+              ) / 1000000;
+          }
+        }
+        if (this.#timeZoneEnabled) {
+          if (mode == MODES.ALL || mode == MODES.TIME_ZONE) {
+            data.timeZone = await this.readStrAsync(
+              this.read32Row(this.#timeZonePositionOffset, row)
+            );
+          }
+        }
+        if (this.#netSpeedEnabled) {
+          if (mode == MODES.ALL || mode == MODES.NET_SPEED) {
+            data.netSpeed = await this.readStrAsync(
+              this.read32Row(this.#netSpeedPositionOffset, row)
+            );
+          }
+        }
+        if (this.#iddCodeEnabled) {
+          if (mode == MODES.ALL || mode == MODES.IDD_CODE) {
+            data.iddCode = await this.readStrAsync(
+              this.read32Row(this.#iddCodePositionOffset, row)
+            );
+          }
+        }
+        if (this.#areaCodeEnabled) {
+          if (mode == MODES.ALL || mode == MODES.AREA_CODE) {
+            data.areaCode = await this.readStrAsync(
+              this.read32Row(this.#areaCodePositionOffset, row)
+            );
+          }
+        }
+        if (this.#weatherStationCodeEnabled) {
+          if (mode == MODES.ALL || mode == MODES.WEATHER_STATION_CODE) {
+            data.weatherStationCode = await this.readStrAsync(
+              this.read32Row(this.#weatherStationCodePositionOffset, row)
+            );
+          }
+        }
+        if (this.#weatherStationNameEnabled) {
+          if (mode == MODES.ALL || mode == MODES.WEATHER_STATION_NAME) {
+            data.weatherStationName = await this.readStrAsync(
+              this.read32Row(this.#weatherStationNamePositionOffset, row)
+            );
+          }
+        }
+        if (this.#mccEnabled) {
+          if (mode == MODES.ALL || mode == MODES.MCC) {
+            data.mcc = await this.readStrAsync(
+              this.read32Row(this.#mccPositionOffset, row)
+            );
+          }
+        }
+        if (this.#mncEnabled) {
+          if (mode == MODES.ALL || mode == MODES.MNC) {
+            data.mnc = await this.readStrAsync(
+              this.read32Row(this.#mncPositionOffset, row)
+            );
+          }
+        }
+        if (this.#mobileBrandEnabled) {
+          if (mode == MODES.ALL || mode == MODES.MOBILE_BRAND) {
+            data.mobileBrand = await this.readStrAsync(
+              this.read32Row(this.#mobileBrandPositionOffset, row)
+            );
+          }
+        }
+        if (this.#elevationEnabled) {
+          if (mode == MODES.ALL || mode == MODES.ELEVATION) {
+            data.elevation = await this.readStrAsync(
+              this.read32Row(this.#elevationPositionOffset, row)
+            );
+          }
+        }
+        if (this.#usageTypeEnabled) {
+          if (mode == MODES.ALL || mode == MODES.USAGE_TYPE) {
+            data.usageType = await this.readStrAsync(
+              this.read32Row(this.#usageTypePositionOffset, row)
+            );
+          }
+        }
+        if (this.#addressTypeEnabled) {
+          if (mode == MODES.ALL || mode == MODES.ADDRESS_TYPE) {
+            data.addressType = await this.readStrAsync(
+              this.read32Row(this.#addressTypePositionOffset, row)
+            );
+          }
+        }
+        if (this.#categoryEnabled) {
+          if (mode == MODES.ALL || mode == MODES.CATEGORY) {
+            data.category = await this.readStrAsync(
+              this.read32Row(this.#categoryPositionOffset, row)
+            );
+          }
+        }
+        if (this.#districtEnabled) {
+          if (mode == MODES.ALL || mode == MODES.DISTRICT) {
+            data.district = await this.readStrAsync(
+              this.read32Row(this.#districtPositionOffset, row)
+            );
+          }
+        }
+        if (this.#asnEnabled) {
+          if (mode == MODES.ALL || mode == MODES.ASN) {
+            data.asn = await this.readStrAsync(
+              this.read32Row(this.#asnPositionOffset, row)
+            );
+          }
+        }
+        if (this.#asEnabled) {
+          if (mode == MODES.ALL || mode == MODES.AS) {
+            data.as = await this.readStrAsync(
+              this.read32Row(this.#asPositionOffset, row)
+            );
+          }
+        }
+        return;
+      } else {
+        if (ipFrom > ipNumber) {
+          high = mid - 1;
+        } else {
+          low = mid + 1;
+        }
+      }
+    }
+    loadMesg(data, MSG_INVALID_IP);
+  }
+
   // Query IP for geolocation info
   geoQuery(myIP, mode) {
     let data = {
@@ -917,6 +1418,68 @@ class IP2Location {
     }
   }
 
+  // Query IP for geolocation info async
+  async geoQueryAsync(myIP, mode) {
+    let data = {
+      ip: "?",
+      ipNo: "?",
+      countryShort: "?",
+      countryLong: "?",
+      region: "?",
+      city: "?",
+      isp: "?",
+      domain: "?",
+      zipCode: "?",
+      latitude: "?",
+      longitude: "?",
+      timeZone: "?",
+      netSpeed: "?",
+      iddCode: "?",
+      areaCode: "?",
+      weatherStationCode: "?",
+      weatherStationName: "?",
+      mcc: "?",
+      mnc: "?",
+      mobileBrand: "?",
+      elevation: "?",
+      usageType: "?",
+      addressType: "?",
+      category: "?",
+      district: "?",
+      asn: "?",
+      as: "?",
+    };
+
+    if (REGEX_IPV4_1_MATCH.test(myIP)) {
+      myIP = myIP.replace(REGEX_IPV4_1_REPLACE, "");
+    } else if (REGEX_IPV4_2_MATCH.test(myIP)) {
+      myIP = myIP.replace(REGEX_IPV4_2_REPLACE, "");
+    }
+
+    let ipType = net.isIP(myIP);
+
+    if (ipType == 0) {
+      loadMesg(data, MSG_INVALID_IP);
+      return data;
+    } else if (
+      !this.#binFile ||
+      this.#binFile == "" ||
+      !fs.existsSync(this.#binFile) // don't use async equivalent to test, not recommended by Node.js as it leads to race conditions
+    ) {
+      loadMesg(data, MSG_MISSING_FILE);
+      return data;
+    } else if (this.#myDB.dbType == 0) {
+      loadMesg(data, MSG_MISSING_FILE);
+      return data;
+    } else if (ipType == 6 && this.#myDB.dbCountIPV6 == 0) {
+      loadMesg(data, MSG_IPV6_UNSUPPORTED);
+      return data;
+    } else {
+      await this.geoQueryDataAsync(myIP, ipType, data, mode);
+      return data;
+    }
+  }
+
   // Return the API version
   getAPIVersion() {
     return VERSION;
@@ -945,9 +1508,21 @@ class IP2Location {
     return data.countryShort;
   }
 
+  // Return a string for the country code async
+  async getCountryShortAsync(myIP) {
+    let data = await this.geoQueryAsync(myIP, MODES.COUNTRY_SHORT);
+    return data.countryShort;
+  }
+
   // Return a string for the country name
   getCountryLong(myIP) {
     let data = this.geoQuery(myIP, MODES.COUNTRY_LONG);
+    return data.countryLong;
+  }
+
+  // Return a string for the country name async
+  async getCountryLongAsync(myIP) {
+    let data = await this.geoQueryAsync(myIP, MODES.COUNTRY_LONG);
     return data.countryLong;
   }
 
@@ -957,9 +1532,21 @@ class IP2Location {
     return data.region;
   }
 
+  // Return a string for the region name async
+  async getRegionAsync(myIP) {
+    let data = await this.geoQueryAsync(myIP, MODES.REGION);
+    return data.region;
+  }
+
   // Return a string for the city name
   getCity(myIP) {
     let data = this.geoQuery(myIP, MODES.CITY);
+    return data.city;
+  }
+
+  // Return a string for the city name async
+  async getCityAsync(myIP) {
+    let data = await this.geoQueryAsync(myIP, MODES.CITY);
     return data.city;
   }
 
@@ -969,9 +1556,21 @@ class IP2Location {
     return data.isp;
   }
 
+  // Return a string for the ISP name async
+  async getISPAsync(myIP) {
+    let data = await this.geoQueryAsync(myIP, MODES.ISP);
+    return data.isp;
+  }
+
   // Return a float for the latitude
   getLatitude(myIP) {
     let data = this.geoQuery(myIP, MODES.LATITUDE);
+    return data.latitude;
+  }
+
+  // Return a float for the latitude async
+  async getLatitudeAsync(myIP) {
+    let data = await this.geoQueryAsync(myIP, MODES.LATITUDE);
     return data.latitude;
   }
 
@@ -981,9 +1580,21 @@ class IP2Location {
     return data.longitude;
   }
 
+  // Return a float for the longitude async
+  async getLongitudeAsync(myIP) {
+    let data = await this.geoQueryAsync(myIP, MODES.LONGITUDE);
+    return data.longitude;
+  }
+
   // Return a string for the domain
   getDomain(myIP) {
     let data = this.geoQuery(myIP, MODES.DOMAIN);
+    return data.domain;
+  }
+
+  // Return a string for the domain async
+  async getDomainAsync(myIP) {
+    let data = await this.geoQueryAsync(myIP, MODES.DOMAIN);
     return data.domain;
   }
 
@@ -993,9 +1604,21 @@ class IP2Location {
     return data.zipCode;
   }
 
+  // Return a string for the ZIP code async
+  async getZIPCodeAsync(myIP) {
+    let data = await this.geoQueryAsync(myIP, MODES.ZIP_CODE);
+    return data.zipCode;
+  }
+
   // Return a string for the time zone
   getTimeZone(myIP) {
     let data = this.geoQuery(myIP, MODES.TIME_ZONE);
+    return data.timeZone;
+  }
+
+  // Return a string for the time zone async
+  async getTimeZoneAsync(myIP) {
+    let data = await this.geoQueryAsync(myIP, MODES.TIME_ZONE);
     return data.timeZone;
   }
 
@@ -1005,9 +1628,21 @@ class IP2Location {
     return data.netSpeed;
   }
 
+  // Return a string for the net speed async
+  async getNetSpeedAsync(myIP) {
+    let data = await this.geoQueryAsync(myIP, MODES.NET_SPEED);
+    return data.netSpeed;
+  }
+
   // Return a string for the IDD code
   getIDDCode(myIP) {
     let data = this.geoQuery(myIP, MODES.IDD_CODE);
+    return data.iddCode;
+  }
+
+  // Return a string for the IDD code async
+  async getIDDCodeAsync(myIP) {
+    let data = await this.geoQueryAsync(myIP, MODES.IDD_CODE);
     return data.iddCode;
   }
 
@@ -1017,9 +1652,21 @@ class IP2Location {
     return data.areaCode;
   }
 
+  // Return a string for the area code async
+  async getAreaCodeAsync(myIP) {
+    let data = await this.geoQueryAsync(myIP, MODES.AREA_CODE);
+    return data.areaCode;
+  }
+
   // Return a string for the weather station code
   getWeatherStationCode(myIP) {
     let data = this.geoQuery(myIP, MODES.WEATHER_STATION_CODE);
+    return data.weatherStationCode;
+  }
+
+  // Return a string for the weather station code async
+  async getWeatherStationCodeAsync(myIP) {
+    let data = await this.geoQueryAsync(myIP, MODES.WEATHER_STATION_CODE);
     return data.weatherStationCode;
   }
 
@@ -1029,9 +1676,21 @@ class IP2Location {
     return data.weatherStationName;
   }
 
+  // Return a string for the weather station name async
+  async getWeatherStationNameAsync(myIP) {
+    let data = await this.geoQueryAsync(myIP, MODES.WEATHER_STATION_NAME);
+    return data.weatherStationName;
+  }
+
   // Return a string for the MCC
   getMCC(myIP) {
     let data = this.geoQuery(myIP, MODES.MCC);
+    return data.mcc;
+  }
+
+  // Return a string for the MCC async
+  async getMCCAsync(myIP) {
+    let data = await this.geoQueryAsync(myIP, MODES.MCC);
     return data.mcc;
   }
 
@@ -1041,9 +1700,21 @@ class IP2Location {
     return data.mnc;
   }
 
+  // Return a string for the MNC async
+  async getMNCAsync(myIP) {
+    let data = await this.geoQueryAsync(myIP, MODES.MNC);
+    return data.mnc;
+  }
+
   // Return a string for the mobile brand
   getMobileBrand(myIP) {
     let data = this.geoQuery(myIP, MODES.MOBILE_BRAND);
+    return data.mobileBrand;
+  }
+
+  // Return a string for the mobile brand async
+  async getMobileBrandAsync(myIP) {
+    let data = await this.geoQueryAsync(myIP, MODES.MOBILE_BRAND);
     return data.mobileBrand;
   }
 
@@ -1053,9 +1724,21 @@ class IP2Location {
     return data.elevation;
   }
 
+  // Return a string for the elevation async
+  async getElevationAsync(myIP) {
+    let data = await this.geoQueryAsync(myIP, MODES.ELEVATION);
+    return data.elevation;
+  }
+
   // Return a string for the usage type
   getUsageType(myIP) {
     let data = this.geoQuery(myIP, MODES.USAGE_TYPE);
+    return data.usageType;
+  }
+
+  // Return a string for the usage type async
+  async getUsageTypeAsync(myIP) {
+    let data = await this.geoQueryAsync(myIP, MODES.USAGE_TYPE);
     return data.usageType;
   }
 
@@ -1065,9 +1748,21 @@ class IP2Location {
     return data.addressType;
   }
 
+  // Return a string for the address type async
+  async getAddressTypeAsync(myIP) {
+    let data = await this.geoQueryAsync(myIP, MODES.ADDRESS_TYPE);
+    return data.addressType;
+  }
+
   // Return a string for the category
   getCategory(myIP) {
     let data = this.geoQuery(myIP, MODES.CATEGORY);
+    return data.category;
+  }
+
+  // Return a string for the category async
+  async getCategoryAsync(myIP) {
+    let data = await this.geoQueryAsync(myIP, MODES.CATEGORY);
     return data.category;
   }
 
@@ -1077,9 +1772,21 @@ class IP2Location {
     return data.district;
   }
 
+  // Return a string for the district name async
+  async getDistrictAsync(myIP) {
+    let data = await this.geoQueryAsync(myIP, MODES.DISTRICT);
+    return data.district;
+  }
+
   // Return a string for the autonomous system number (ASN)
   getASN(myIP) {
     let data = this.geoQuery(myIP, MODES.ASN);
+    return data.asn;
+  }
+
+  // Return a string for the autonomous system number (ASN) async
+  async getASNAsync(myIP) {
+    let data = await this.geoQueryAsync(myIP, MODES.ASN);
     return data.asn;
   }
 
@@ -1089,9 +1796,21 @@ class IP2Location {
     return data.as;
   }
 
+  // Return a string for the autonomous system (AS) async
+  async getASAsync(myIP) {
+    let data = await this.geoQueryAsync(myIP, MODES.AS);
+    return data.as;
+  }
+
   // Return all results
   getAll(myIP) {
     let data = this.geoQuery(myIP, MODES.ALL);
+    return data;
+  }
+
+  // Return all results async
+  async getAllAsync(myIP) {
+    let data = await this.geoQueryAsync(myIP, MODES.ALL);
     return data;
   }
 }

@@ -12,12 +12,25 @@ Load the IP2Location BIN database for lookup.
 :param str binPath: (Required) The file path links to IP2Location BIN databases.
 ```
 
+```{py:function} openAsync(binPath)
+Load the IP2Location BIN database for lookup asynchronously.
+
+:param str binPath: (Required) The file path links to IP2Location BIN databases.
+```
+
 ```{py:function} getAll(ipAddress)
 Retrieve geolocation information for an IP address.
 
 :param str ipAddress: (Required) The IP address (IPv4 or IPv6).
 :return: Returns the geolocation information in array. Refer below table for the fields avaliable in the array
 :rtype: array
+
+{py:function} getAllAsync(ipAddress)
+Retrieve geolocation information for an IP address asynchronously.
+
+:param str ipAddress: (Required) The IP address (IPv4 or IPv6).
+:return: Returns the geolocation information in a Promise of an array. Refer below table for the fields avaliable in the array
+:rtype: Promise of an array
 
 **RETURN FIELDS**
 
