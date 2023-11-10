@@ -5,7 +5,7 @@ const https = require("https");
 const csv = require("csv-parser");
 
 // For BIN queries
-const VERSION = "9.6.0";
+const VERSION = "9.6.1";
 const MAX_INDEX = 65536;
 const COUNTRY_POSITION = [
   0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
@@ -2295,34 +2295,43 @@ class IPTools {
     ip = arr[0];
     prefix = parseInt(arr[1]);
 
-    let hexStartAddress = this.expandIPV6(ip).replaceAll(":", "");
-    let hexEndAddress = hexStartAddress;
+    let parts = this.expandIPV6(ip).split(":");
 
-    let bits = 128 - prefix;
-    let x = 0;
-    let y = "";
-    let pos = 31;
+    let bitStart = "1".repeat(prefix) + "0".repeat(128 - prefix);
+    let bitEnd = "0".repeat(prefix) + "1".repeat(128 - prefix);
 
-    while (bits > 0) {
-      x = parseInt(hexEndAddress.charAt(pos), 16);
-      y = (x | (Math.pow(2, Math.min(4, bits)) - 1)).toString(16); // single hex char
+    let floors = bitStart.match(/.{1,16}/g) ?? [];
+    let ceilings = bitEnd.match(/.{1,16}/g) ?? [];
 
-      // replace char
-      hexEndAddress =
-        hexEndAddress.substring(0, pos) +
-        y +
-        hexEndAddress.substring(pos + y.length);
+    let start = [];
+    let end = [];
 
-      bits -= 4;
-      pos -= 1;
+    for (let x = 0; x < 8; x++) {
+      start.push(
+        (
+          parseInt(parts[x], 16) &
+          parseInt(this.baseConvert(floors[x], 2, 16), 16)
+        ).toString(16)
+      );
+      end.push(
+        (
+          parseInt(parts[x], 16) |
+          parseInt(this.baseConvert(ceilings[x], 2, 16), 16)
+        ).toString(16)
+      );
     }
 
-    hexStartAddress = hexStartAddress.replaceAll(/(.{4})/g, "$1:");
-    hexStartAddress = hexStartAddress.substring(0, hexStartAddress.length - 1);
-    hexEndAddress = hexEndAddress.replaceAll(/(.{4})/g, "$1:");
-    hexEndAddress = hexEndAddress.substring(0, hexEndAddress.length - 1);
+    return [this.expandIPV6(start.join(":")), this.expandIPV6(end.join(":"))];
+  }
 
-    return [hexStartAddress, hexEndAddress];
+  baseConvert(num, fromBase, toBase) {
+    // Parse the num from the source base to base 10
+    let base10Number = parseInt(num, fromBase);
+
+    // Convert the base 10 number to the target base
+    let result = base10Number.toString(toBase);
+
+    return result;
   }
 }
 
