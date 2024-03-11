@@ -16,8 +16,8 @@ This module can be used in many types of projects such as:
 
 The database will be updated on a monthly basis for greater accuracy.
 
-The complete database is available at https://www.ip2location.com under Premium subscription package.
-The free LITE database is available at https://lite.ip2location.com.
+The complete BIN database is available at https://www.ip2location.com under Premium subscription package.
+The free LITE BIN database is available at https://lite.ip2location.com.
 
 
 ## Table of contents
