@@ -324,28 +324,28 @@ export class IP2Location {
      * @param myIP The IP address to query.
      * @returns The latitude.
      */
-    getLatitude(myIP: string): string;
+    getLatitude(myIP: string): string | number;
     /**
      * Returns the latitude asynchronously.
      *
      * @param myIP The IP address to query.
      * @returns The promise of the latitude.
      */
-    getLatitudeAsync(myIP: string): Promise<string>;
+    getLatitudeAsync(myIP: string): Promise<string | number>;
     /**
      * Returns the longitude.
      *
      * @param myIP The IP address to query.
      * @returns The longitude.
      */
-    getLongitude(myIP: string): string;
+    getLongitude(myIP: string): string | number;
     /**
      * Returns the longitude asynchronously.
      *
      * @param myIP The IP address to query.
      * @returns The promise of the longitude.
      */
-    getLongitudeAsync(myIP: string): Promise<string>;
+    getLongitudeAsync(myIP: string): Promise<string | number>;
     /**
      * Returns the domain name.
      *
@@ -614,8 +614,8 @@ export class IP2Location {
         isp: string;
         domain: string;
         zipCode: string;
-        latitude: string;
-        longitude: string;
+        latitude: string | number;
+        longitude: string | number;
         timeZone: string;
         netSpeed: string;
         iddCode: string;
@@ -649,8 +649,8 @@ export class IP2Location {
         isp: string;
         domain: string;
         zipCode: string;
-        latitude: string;
-        longitude: string;
+        latitude: string | number;
+        longitude: string | number;
         timeZone: string;
         netSpeed: string;
         iddCode: string;
