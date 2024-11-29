@@ -141,6 +141,12 @@ export class IP2Location {
      */
     close(): 0 | -1;
     /**
+     * Resets metadata and closes file handle asynchronously.
+     *
+     * @returns The promise of 0 if successful else -1 for errors.
+     */
+    closeAsync(): Promise<0 | -1>;
+    /**
      * Retrieves geolocation data into supplied object.
      *
      * @param myIP The IP address to query.
@@ -175,8 +181,8 @@ export class IP2Location {
         isp: string;
         domain: string;
         zipCode: string;
-        latitude: string;
-        longitude: string;
+        latitude: string | number;
+        longitude: string | number;
         timeZone: string;
         netSpeed: string;
         iddCode: string;
@@ -211,8 +217,8 @@ export class IP2Location {
         isp: string;
         domain: string;
         zipCode: string;
-        latitude: string;
-        longitude: string;
+        latitude: string | number;
+        longitude: string | number;
         timeZone: string;
         netSpeed: string;
         iddCode: string;
