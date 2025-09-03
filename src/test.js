@@ -37,6 +37,9 @@ for (var x = 0; x < testip.length; x++) {
 	console.log("district: " + ip2location.getDistrict(testip[x]));
 	console.log("asn: " + ip2location.getASN(testip[x]));
 	console.log("as: " + ip2location.getAS(testip[x]));
+	console.log("asDomain: " + ip2location.getASDomain(testip[x]));
+	console.log("asUsageType: " + ip2location.getASUsageType(testip[x]));
+	console.log("asCidr: " + ip2location.getASCidr(testip[x]));
 	console.log("==================================================================");
 }
 

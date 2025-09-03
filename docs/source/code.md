@@ -54,6 +54,9 @@ Retrieve geolocation information for an IP address.
 | district         |     District or county name. |
 | asn              |     Autonomous system number (ASN). BIN databases. |
 | as          |     Autonomous system (AS) name. |
+| asDomain    | Domain name of the AS registrant. |
+| asUsageType    | Usage type of the AS registrant. |
+| asCidr    | CIDR range for the whole AS. |
 ```
 
 ```{py:function} getAllAsync(ipAddress)
@@ -92,6 +95,9 @@ Retrieve geolocation information for an IP address asynchronously.
 | district         |     District or county name. |
 | asn              |     Autonomous system number (ASN). BIN databases. |
 | as          |     Autonomous system (AS) name. |
+| asDomain    | Domain name of the AS registrant. |
+| asUsageType    | Usage type of the AS registrant. |
+| asCidr    | CIDR range for the whole AS. |
 ```
 
 ## IPTools Class

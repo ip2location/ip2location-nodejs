@@ -199,6 +199,9 @@ export class IP2Location {
         district: string;
         asn: string;
         as: string;
+        asDomain: string;
+        asUsageType: string;
+        asCidr: string;
     };
     /**
      * Performs validations and returns geolocation data asynchronously.
@@ -235,6 +238,9 @@ export class IP2Location {
         district: string;
         asn: string;
         as: string;
+        asDomain: string;
+        asUsageType: string;
+        asCidr: string;
     }>;
     /**
      * Returns the API version.
@@ -605,6 +611,48 @@ export class IP2Location {
      */
     getASAsync(myIP: string): Promise<string>;
     /**
+     * Returns the AS domain.
+     *
+     * @param myIP The IP address to query.
+     * @returns The AS domain.
+     */
+    getASDomain(myIP: string): string;
+    /**
+     * Returns the AS domain asynchronously.
+     *
+     * @param myIP The IP address to query.
+     * @returns The promise of the AS domain.
+     */
+    getASDomainAsync(myIP: string): Promise<string>;
+    /**
+     * Returns the AS usage type.
+     *
+     * @param myIP The IP address to query.
+     * @returns The AS usage type.
+     */
+    getASUsageType(myIP: string): string;
+    /**
+     * Returns the AS usage type asynchronously.
+     *
+     * @param myIP The IP address to query.
+     * @returns The promise of the AS usage type.
+     */
+    getASUsageTypeAsync(myIP: string): Promise<string>;
+    /**
+     * Returns the AS CIDR.
+     *
+     * @param myIP The IP address to query.
+     * @returns The AS CIDR.
+     */
+    getASCidr(myIP: string): string;
+    /**
+     * Returns the AS CIDR asynchronously.
+     *
+     * @param myIP The IP address to query.
+     * @returns The promise of the AS CIDR.
+     */
+    getASCidrAsync(myIP: string): Promise<string>;
+    /**
      * Returns all fields.
      *
      * @param myIP The IP address to query.
@@ -638,6 +686,9 @@ export class IP2Location {
         district: string;
         asn: string;
         as: string;
+        asDomain: string;
+        asUsageType: string;
+        asCidr: string;
     };
     /**
      * Returns all fields asynchronously.
@@ -673,6 +724,9 @@ export class IP2Location {
         district: string;
         asn: string;
         as: string;
+        asDomain: string;
+        asUsageType: string;
+        asCidr: string;
     }>;
     #private;
 }

@@ -5,7 +5,7 @@ const https = require("https");
 const csv = require("csv-parser");
 
 // For BIN queries
-const VERSION = "9.6.3";
+const VERSION = "9.7.0";
 const MAX_INDEX = 65536;
 const COUNTRY_POSITION = [
   0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
@@ -103,6 +103,18 @@ const AS_POSITION = [
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
   25,
 ];
+const AS_DOMAIN_POSITION = [
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  26,
+];
+const AS_USAGE_TYPE_POSITION = [
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  27,
+];
+const AS_CIDR_POSITION = [
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  28,
+];
 const MAX_IPV4_RANGE = BigInt(4294967295);
 const MAX_IPV6_RANGE = BigInt("340282366920938463463374607431768211455");
 const FROM_6TO4 = BigInt("42545680458834377588178886921629466624");
@@ -139,6 +151,9 @@ const MODES = {
   DISTRICT: 23,
   ASN: 24,
   AS: 25,
+  AS_DOMAIN: 26,
+  AS_USAGE_TYPE: 27,
+  AS_CIDR: 28,
   ALL: 100,
 };
 const MSG_NOT_SUPPORTED =
@@ -215,6 +230,9 @@ class IP2Location {
   #districtPositionOffset = 0;
   #asnPositionOffset = 0;
   #asPositionOffset = 0;
+  #asDomainPositionOffset = 0;
+  #asUsageTypePositionOffset = 0;
+  #asCidrPositionOffset = 0;
 
   #countryEnabled = 0;
   #regionEnabled = 0;
@@ -240,6 +258,9 @@ class IP2Location {
   #districtEnabled = 0;
   #asnEnabled = 0;
   #asEnabled = 0;
+  #asDomainEnabled = 0;
+  #asUsageTypeEnabled = 0;
+  #asCidrEnabled = 0;
 
   #myDB = {
     dbType: 0,
@@ -508,6 +529,14 @@ class IP2Location {
           ASN_POSITION[dbt] != 0 ? (ASN_POSITION[dbt] - 2) << 2 : 0;
         this.#asPositionOffset =
           AS_POSITION[dbt] != 0 ? (AS_POSITION[dbt] - 2) << 2 : 0;
+        this.#asDomainPositionOffset =
+          AS_DOMAIN_POSITION[dbt] != 0 ? (AS_DOMAIN_POSITION[dbt] - 2) << 2 : 0;
+        this.#asUsageTypePositionOffset =
+          AS_USAGE_TYPE_POSITION[dbt] != 0
+            ? (AS_USAGE_TYPE_POSITION[dbt] - 2) << 2
+            : 0;
+        this.#asCidrPositionOffset =
+          AS_CIDR_POSITION[dbt] != 0 ? (AS_CIDR_POSITION[dbt] - 2) << 2 : 0;
 
         this.#countryEnabled = COUNTRY_POSITION[dbt] != 0 ? 1 : 0;
         this.#regionEnabled = REGION_POSITION[dbt] != 0 ? 1 : 0;
@@ -535,6 +564,9 @@ class IP2Location {
         this.#districtEnabled = DISTRICT_POSITION[dbt] != 0 ? 1 : 0;
         this.#asnEnabled = ASN_POSITION[dbt] != 0 ? 1 : 0;
         this.#asEnabled = AS_POSITION[dbt] != 0 ? 1 : 0;
+        this.#asDomainEnabled = AS_DOMAIN_POSITION[dbt] != 0 ? 1 : 0;
+        this.#asUsageTypeEnabled = AS_USAGE_TYPE_POSITION[dbt] != 0 ? 1 : 0;
+        this.#asCidrEnabled = AS_CIDR_POSITION[dbt] != 0 ? 1 : 0;
 
         if (this.#myDB.indexed == 1) {
           len = MAX_INDEX;
@@ -678,6 +710,14 @@ class IP2Location {
           ASN_POSITION[dbt] != 0 ? (ASN_POSITION[dbt] - 2) << 2 : 0;
         this.#asPositionOffset =
           AS_POSITION[dbt] != 0 ? (AS_POSITION[dbt] - 2) << 2 : 0;
+        this.#asDomainPositionOffset =
+          AS_DOMAIN_POSITION[dbt] != 0 ? (AS_DOMAIN_POSITION[dbt] - 2) << 2 : 0;
+        this.#asUsageTypePositionOffset =
+          AS_USAGE_TYPE_POSITION[dbt] != 0
+            ? (AS_USAGE_TYPE_POSITION[dbt] - 2) << 2
+            : 0;
+        this.#asCidrPositionOffset =
+          AS_CIDR_POSITION[dbt] != 0 ? (AS_CIDR_POSITION[dbt] - 2) << 2 : 0;
 
         this.#countryEnabled = COUNTRY_POSITION[dbt] != 0 ? 1 : 0;
         this.#regionEnabled = REGION_POSITION[dbt] != 0 ? 1 : 0;
@@ -705,6 +745,9 @@ class IP2Location {
         this.#districtEnabled = DISTRICT_POSITION[dbt] != 0 ? 1 : 0;
         this.#asnEnabled = ASN_POSITION[dbt] != 0 ? 1 : 0;
         this.#asEnabled = AS_POSITION[dbt] != 0 ? 1 : 0;
+        this.#asDomainEnabled = AS_DOMAIN_POSITION[dbt] != 0 ? 1 : 0;
+        this.#asUsageTypeEnabled = AS_USAGE_TYPE_POSITION[dbt] != 0 ? 1 : 0;
+        this.#asCidrEnabled = AS_CIDR_POSITION[dbt] != 0 ? 1 : 0;
 
         if (this.#myDB.indexed == 1) {
           len = MAX_INDEX;
@@ -1091,6 +1134,27 @@ class IP2Location {
             data.as = this.readStr(this.read32Row(this.#asPositionOffset, row));
           }
         }
+        if (this.#asDomainEnabled) {
+          if (mode == MODES.ALL || mode == MODES.AS_DOMAIN) {
+            data.asDomain = this.readStr(
+              this.read32Row(this.#asDomainPositionOffset, row)
+            );
+          }
+        }
+        if (this.#asUsageTypeEnabled) {
+          if (mode == MODES.ALL || mode == MODES.AS_USAGE_TYPE) {
+            data.asUsageType = this.readStr(
+              this.read32Row(this.#asUsageTypePositionOffset, row)
+            );
+          }
+        }
+        if (this.#asCidrEnabled) {
+          if (mode == MODES.ALL || mode == MODES.AS_CIDR) {
+            data.asCidr = this.readStr(
+              this.read32Row(this.#asCidrPositionOffset, row)
+            );
+          }
+        }
         return;
       } else {
         if (ipFrom > ipNumber) {
@@ -1387,6 +1451,27 @@ class IP2Location {
             );
           }
         }
+        if (this.#asDomainEnabled) {
+          if (mode == MODES.ALL || mode == MODES.AS_DOMAIN) {
+            data.asDomain = await this.readStrAsync(
+              this.read32Row(this.#asDomainPositionOffset, row)
+            );
+          }
+        }
+        if (this.#asUsageTypeEnabled) {
+          if (mode == MODES.ALL || mode == MODES.AS_USAGE_TYPE) {
+            data.asUsageType = await this.readStrAsync(
+              this.read32Row(this.#asUsageTypePositionOffset, row)
+            );
+          }
+        }
+        if (this.#asCidrEnabled) {
+          if (mode == MODES.ALL || mode == MODES.AS_CIDR) {
+            data.asCidr = await this.readStrAsync(
+              this.read32Row(this.#asCidrPositionOffset, row)
+            );
+          }
+        }
         return;
       } else {
         if (ipFrom > ipNumber) {
@@ -1429,6 +1514,9 @@ class IP2Location {
       district: "?",
       asn: "?",
       as: "?",
+      asDomain: "?",
+      asUsageType: "?",
+      asCidr: "?",
     };
 
     if (REGEX_IPV4_1_MATCH.test(myIP)) {
@@ -1488,6 +1576,9 @@ class IP2Location {
       district: "?",
       asn: "?",
       as: "?",
+      asDomain: "?",
+      asUsageType: "?",
+      asCidr: "?",
     };
 
     if (REGEX_IPV4_1_MATCH.test(myIP)) {
@@ -1837,6 +1928,42 @@ class IP2Location {
   async getASAsync(myIP) {
     let data = await this.geoQueryAsync(myIP, MODES.AS);
     return data.as;
+  }
+
+  // Return a string for the AS domain
+  getASDomain(myIP) {
+    let data = this.geoQuery(myIP, MODES.AS_DOMAIN);
+    return data.asDomain;
+  }
+
+  // Return a string for the AS domain async
+  async getASDomainAsync(myIP) {
+    let data = await this.geoQueryAsync(myIP, MODES.AS_DOMAIN);
+    return data.asDomain;
+  }
+
+  // Return a string for the AS usage type
+  getASUsageType(myIP) {
+    let data = this.geoQuery(myIP, MODES.AS_USAGE_TYPE);
+    return data.asUsageType;
+  }
+
+  // Return a string for the AS usage type async
+  async getASUsageTypeAsync(myIP) {
+    let data = await this.geoQueryAsync(myIP, MODES.AS_USAGE_TYPE);
+    return data.asUsageType;
+  }
+
+  // Return a string for the AS CIDR
+  getASCidr(myIP) {
+    let data = this.geoQuery(myIP, MODES.AS_CIDR);
+    return data.asCidr;
+  }
+
+  // Return a string for the AS CIDR async
+  async getASCidrAsync(myIP) {
+    let data = await this.geoQueryAsync(myIP, MODES.AS_CIDR);
+    return data.asCidr;
   }
 
   // Return all results
