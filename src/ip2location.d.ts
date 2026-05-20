@@ -1,4 +1,12 @@
+export type IP2LocationMiddleware = (req: any, res: any, next: any) => void | Promise<void>;
+
 export class IP2Location {
+   /**
+    * Express middleware for IP2Location lookup.
+    *
+    * @returns Express request handler middleware.
+    */
+    middleware(): IP2LocationMiddleware;
     /**
      * Reads bytes from file into buffer.
      *

@@ -136,3 +136,47 @@ region.getRegionCode("US", "California").then(region_code => {
 	console.log(region_code);
 });
 ```
+
+## Framework Integration
+
+### Query geolocation information within Express.js middleware
+
+You can query the geolocation information using Express.js middleware as below:
+
+```javascript
+const express = require("express");
+const {IP2Location} = require("ip2location-nodejs");
+
+const app = express();
+const ip2location = new IP2Location();
+
+ip2location.open("./DB26.BIN");
+
+// Optional, only if testing behind proxy / X-Forwarded-For
+app.set("trust proxy", true);
+
+// Use IP2Location middleware
+app.use(ip2location.middleware());
+
+app.get("/", (req, res) => {
+  if (req.ip2location.status === 'OK') {
+    res.json(req.ip2location);
+  } else {
+    console.error(req.ip2location.status);
+  }
+});
+
+// Error handler
+app.use((err, req, res, next) => {
+  console.error("Middleware error:", err);
+
+  res.status(500).json({
+    status: "ERROR",
+    message: err.message,
+  });
+});
+
+app.listen(3000, () => {
+  console.log("Test server running at http://localhost:3000");
+});
+```

@@ -5,7 +5,7 @@ const https = require("https");
 const csv = require("csv-parser");
 
 // For BIN queries
-const VERSION = "9.7.0";
+const VERSION = "9.8.0";
 const MAX_INDEX = 65536;
 const COUNTRY_POSITION = [
   0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
@@ -1976,6 +1976,29 @@ class IP2Location {
   async getAllAsync(myIP) {
     let data = await this.geoQueryAsync(myIP, MODES.ALL);
     return data;
+  }
+
+  // Express request handler middleware
+  middleware() {
+    return async (req, res, next) => {
+      try {
+        let ip = req.ip || req.socket.remoteAddress;
+
+        req.ip2location = await this.getAllAsync(ip);
+
+        const countryShort = req.ip2location?.countryShort;
+
+        if (countryShort === "-" || /^[A-Z]{2}$/.test(countryShort)) {
+          req.ip2location.status = "OK";
+        } else {
+          req.ip2location.status = "ERROR: " + countryShort;
+        }
+
+        next();
+      } catch (err) {
+        next(err);
+      }
+    };
   }
 }
 

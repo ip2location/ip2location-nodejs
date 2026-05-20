@@ -18,6 +18,10 @@ Load the IP2Location BIN database for lookup asynchronously.
 :param str binPath: (Required) The file path links to IP2Location BIN databases.
 ```
 
+```{py:function} middleware()
+Express.js request handler middleware.
+```
+
 ```{py:function} getAll(ipAddress)
 Retrieve geolocation information for an IP address.
 
