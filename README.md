@@ -15,6 +15,8 @@ This module can be used in many types of projects such as:
  - prevent password sharing and abuse of service 
  - geotargeting in advertisement
 
+This module also comes with a middleware to allow querying geolocation data within Express.js.
+
 The database will be updated on a monthly basis for greater accuracy.
 
 The complete database is available at https://www.ip2location.com under Premium subscription package.
