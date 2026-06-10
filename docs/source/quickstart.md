@@ -159,11 +159,16 @@ app.set("trust proxy", true);
 app.use(ip2location.middleware());
 
 app.get("/", (req, res) => {
-  if (req.ip2location.status === 'OK') {
-    res.json(req.ip2location);
-  } else {
-    console.error(req.ip2location.status);
+  if (req.ip2location && req.ip2location.status === "OK") {
+    return res.json(req.ip2location);
   }
+
+  console.error(req.ip2location?.status || "No IP2Location result");
+
+  return res.status(400).json({
+    status: "ERROR",
+    message: req.ip2location?.status || "Unable to retrieve IP2Location result",
+  });
 });
 
 // Error handler
