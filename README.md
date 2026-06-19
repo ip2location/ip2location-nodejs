@@ -20,7 +20,7 @@ This module also comes with a middleware to allow querying geolocation data with
 The database will be updated on a monthly basis for greater accuracy.
 
 The complete database is available at https://www.ip2location.com under Premium subscription package.
-The free LITE database is available at https://lite.ip2location.com.
+The free LITE database is available at https://www.ip2location.com/database/lite.
 
 ## Developer Documentation
 To learn more about installation, usage, and code examples, please visit the developer documentation at [https://ip2location-nodejs.readthedocs.io/en/latest/index.html.](https://ip2location-nodejs.readthedocs.io/en/latest/index.html)
